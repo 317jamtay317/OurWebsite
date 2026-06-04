@@ -25,8 +25,18 @@ public interface IProductRepository
     /// <returns>The published products, in no particular order.</returns>
     Task<IReadOnlyList<Product>> ListPublishedAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Lists every product, including drafts, for the admin catalogue.</summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>All products, in no particular order.</returns>
+    Task<IReadOnlyList<Product>> ListAllAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Adds a new product to the store.</summary>
     /// <param name="product">The product to add.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task AddAsync(Product product, CancellationToken cancellationToken = default);
+
+    /// <summary>Persists changes made to an existing product.</summary>
+    /// <param name="product">The product to update.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task UpdateAsync(Product product, CancellationToken cancellationToken = default);
 }

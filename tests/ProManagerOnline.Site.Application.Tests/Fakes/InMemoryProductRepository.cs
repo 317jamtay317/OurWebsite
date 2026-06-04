@@ -21,7 +21,16 @@ internal sealed class InMemoryProductRepository : IProductRepository
         => Task.FromResult<IReadOnlyList<Product>>(
             _products.Values.Where(product => product.Status == ProductStatus.Published).ToList());
 
+    public Task<IReadOnlyList<Product>> ListAllAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<Product>>(_products.Values.ToList());
+
     public Task AddAsync(Product product, CancellationToken cancellationToken = default)
+    {
+        _products[product.Id] = product;
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(Product product, CancellationToken cancellationToken = default)
     {
         _products[product.Id] = product;
         return Task.CompletedTask;
