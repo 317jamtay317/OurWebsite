@@ -11,6 +11,12 @@ builder.Services.AddRazorPages();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
 
+// Model Context Protocol server, exposing the site's tools over Streamable HTTP.
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -34,5 +40,8 @@ app.UseAuthorization();
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
+
+// Model Context Protocol endpoint (Streamable HTTP) for MCP clients.
+app.MapMcp("/mcp");
 
 app.Run();
