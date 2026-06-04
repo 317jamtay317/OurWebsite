@@ -138,4 +138,201 @@ public class ProductTests
 
         Assert.Throws<DomainException>(() => product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly));
     }
+
+    // ---- Plan features ----
+
+    [Fact]
+    public void AddPlan_WithFeatures_StoresThemInOrder()
+    {
+        var product = NewDraft();
+
+        var planId = product.AddPlan(
+            "Pro", "For growing teams.", Usd(79m), BillingPeriod.Monthly,
+            ["Unlimited projects", "Priority support", "Advanced reports"]);
+
+        var plan = product.Plans.Single(p => p.Id == planId);
+        Assert.Equal(new[] { "Unlimited projects", "Priority support", "Advanced reports" }, plan.Features);
+    }
+
+    [Fact]
+    public void AddPlan_TrimsFeaturesAndDropsBlankOnes()
+    {
+        var product = NewDraft();
+
+        var planId = product.AddPlan(
+            "Pro", "", Usd(79m), BillingPeriod.Monthly,
+            ["  Unlimited projects  ", "   ", "", "Priority support"]);
+
+        var plan = product.Plans.Single(p => p.Id == planId);
+        Assert.Equal(new[] { "Unlimited projects", "Priority support" }, plan.Features);
+    }
+
+    [Fact]
+    public void UpdatePlan_ChangesDetailsAndFeatures()
+    {
+        var product = NewDraft();
+        var planId = product.AddPlan("Solo", "old", Usd(29m), BillingPeriod.Monthly, ["A"]);
+
+        product.UpdatePlan(planId, "Solo Plus", "new", Usd(39m), BillingPeriod.Annual, ["B", "C"]);
+
+        var plan = product.Plans.Single(p => p.Id == planId);
+        Assert.Equal("Solo Plus", plan.Name);
+        Assert.Equal("new", plan.Description);
+        Assert.Equal(39m, plan.Price.Amount);
+        Assert.Equal(BillingPeriod.Annual, plan.BillingPeriod);
+        Assert.Equal(new[] { "B", "C" }, plan.Features);
+    }
+
+    [Fact]
+    public void UpdatePlan_ForUnknownPlan_ThrowsDomainException()
+    {
+        var product = NewDraft();
+
+        Assert.Throws<DomainException>(() =>
+            product.UpdatePlan(PlanId.New(), "X", "", Usd(1m), BillingPeriod.Monthly, []));
+    }
+
+    [Fact]
+    public void RemovePlan_RemovesThatPlan()
+    {
+        var product = NewDraft();
+        var solo = product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
+        var team = product.AddPlan("Team", "", Usd(79m), BillingPeriod.Monthly);
+
+        product.RemovePlan(solo);
+
+        Assert.Equal(team, product.Plans.Single().Id);
+    }
+
+    [Fact]
+    public void RemovePlan_ForUnknownPlan_ThrowsDomainException()
+    {
+        var product = NewDraft();
+
+        Assert.Throws<DomainException>(() => product.RemovePlan(PlanId.New()));
+    }
+
+    // ---- Fixed price ----
+
+    [Fact]
+    public void MakeFixedPrice_SetsKindAndPriceAndClearsPlans()
+    {
+        var product = NewDraft();
+        product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
+
+        product.MakeFixedPrice(Usd(499m));
+
+        Assert.Equal(PricingKind.Fixed, product.PricingKind);
+        Assert.NotNull(product.FixedPrice);
+        Assert.Equal(499m, product.FixedPrice!.Amount);
+        Assert.Empty(product.Plans);
+    }
+
+    [Fact]
+    public void MakeFixedPrice_ThenPublish_BecomesPublished()
+    {
+        var product = NewDraft();
+        product.MakeFixedPrice(Usd(499m));
+
+        product.Publish();
+
+        Assert.Equal(ProductStatus.Published, product.Status);
+    }
+
+    [Fact]
+    public void ChangeFixedPrice_UpdatesThePrice()
+    {
+        var product = NewDraft();
+        product.MakeFixedPrice(Usd(499m));
+
+        product.ChangeFixedPrice(Usd(599m));
+
+        Assert.Equal(599m, product.FixedPrice!.Amount);
+    }
+
+    [Fact]
+    public void ChangeFixedPrice_WhenNotFixed_ThrowsDomainException()
+    {
+        var product = NewDraft();
+
+        Assert.Throws<DomainException>(() => product.ChangeFixedPrice(Usd(599m)));
+    }
+
+    [Fact]
+    public void MakeQuoteBased_ClearsFixedPrice()
+    {
+        var product = NewDraft();
+        product.MakeFixedPrice(Usd(499m));
+
+        product.MakeQuoteBased();
+
+        Assert.Equal(PricingKind.Quote, product.PricingKind);
+        Assert.Null(product.FixedPrice);
+    }
+
+    [Fact]
+    public void MakeTiered_FromFixed_SwitchesKindAndClearsFixedPrice()
+    {
+        var product = NewDraft();
+        product.MakeFixedPrice(Usd(499m));
+
+        product.MakeTiered();
+
+        Assert.Equal(PricingKind.Tiered, product.PricingKind);
+        Assert.Null(product.FixedPrice);
+    }
+
+    // ---- Editing details, slug and publication ----
+
+    [Fact]
+    public void UpdateDetails_ChangesNameCategoryAndSummary()
+    {
+        var product = NewDraft();
+
+        product.UpdateDetails("New name", "New category", "New summary.");
+
+        Assert.Equal("New name", product.Name);
+        Assert.Equal("New category", product.Category);
+        Assert.Equal("New summary.", product.Summary);
+    }
+
+    [Fact]
+    public void UpdateDetails_GivenBlankName_ThrowsDomainException()
+    {
+        var product = NewDraft();
+
+        Assert.Throws<DomainException>(() => product.UpdateDetails(" ", "Category", "Summary."));
+    }
+
+    [Fact]
+    public void ChangeSlug_WhileDraft_ChangesTheSlug()
+    {
+        var product = NewDraft();
+
+        product.ChangeSlug(Slug.Create("new-slug"));
+
+        Assert.Equal("new-slug", product.Slug.Value);
+    }
+
+    [Fact]
+    public void ChangeSlug_WhilePublished_ThrowsDomainException()
+    {
+        var product = NewDraft();
+        product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
+        product.Publish();
+
+        Assert.Throws<DomainException>(() => product.ChangeSlug(Slug.Create("new-slug")));
+    }
+
+    [Fact]
+    public void Unpublish_ReturnsProductToDraft()
+    {
+        var product = NewDraft();
+        product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
+        product.Publish();
+
+        product.Unpublish();
+
+        Assert.Equal(ProductStatus.Draft, product.Status);
+    }
 }
