@@ -1,0 +1,12 @@
+# Keep the Docker build context small. Only public/ and default.conf are
+# copied into the image; everything below is irrelevant to the build.
+.git
+.gitignore
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore
+node_modules
+npm-debug.log
+.DS_Store
+Thumbs.db

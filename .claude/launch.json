@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pmo-dotnet",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/ProManagerOnline.Site.Web", "--launch-profile", "http"],
+      "port": 5070
+    }
+  ]
+}

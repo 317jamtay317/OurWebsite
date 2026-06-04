@@ -1,0 +1,18 @@
+# ==========================================================================
+# Run the ProManager Online site locally with Docker Compose.
+#
+#   docker compose up --build      # build and start (http://localhost:8080)
+#   docker compose up -d --build   # same, but detached/background
+#   docker compose down            # stop and remove the container
+#
+# Change the host port by editing the left-hand number under "ports"
+# (for example "3000:80" to serve on http://localhost:3000).
+# ==========================================================================
+services:
+  web:
+    build: .
+    image: promanageronline-site
+    container_name: promanageronline-site
+    ports:
+      - "8080:80"
+    restart: unless-stopped
