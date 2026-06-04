@@ -1,38 +1,48 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using ProManagerOnline.Site.Application;
 using ProManagerOnline.Site.Infrastructure;
 using ProManagerOnline.Site.Infrastructure.Persistence;
+using ProManagerOnline.Site.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Presentation + application + infrastructure services.
+// Presentation: a Blazor Web App with Interactive Auto components. Razor Pages stays registered
+// so the parallel documentation pages keep working alongside Blazor.
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents()
+    .AddInteractiveWebAssemblyComponents();
 builder.Services.AddRazorPages();
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
-else
-{
+    app.UseWebAssemblyDebugging();
+
     // In development, bring the database up to date and seed the initial catalogue.
     using var scope = app.Services.CreateScope();
     var database = scope.ServiceProvider.GetRequiredService<SiteDbContext>();
     await database.Database.MigrateAsync();
     await SiteDbSeeder.SeedAsync(database);
 }
+else
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
 
+app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
-app.UseRouting();
-app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(ProManagerOnline.Site.Web.Client._Imports).Assembly);
+app.MapRazorPages();
 
 app.Run();

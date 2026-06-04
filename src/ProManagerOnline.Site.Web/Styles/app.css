@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Scan Blazor components in both the server and WebAssembly client projects for class names. */
+@source "../Components/**/*.razor";
+@source "../../ProManagerOnline.Site.Web.Client/**/*.razor";
+
 /* Brand design tokens, ported from the original site's CSS custom properties.
    The palette is Tailwind's own indigo / cyan / slate, so most utilities work as-is. */
 @theme {

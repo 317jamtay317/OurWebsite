@@ -3,6 +3,7 @@
     <Project Path="src/ProManagerOnline.Site.Application/ProManagerOnline.Site.Application.csproj" />
     <Project Path="src/ProManagerOnline.Site.Domain/ProManagerOnline.Site.Domain.csproj" />
     <Project Path="src/ProManagerOnline.Site.Infrastructure/ProManagerOnline.Site.Infrastructure.csproj" />
+    <Project Path="src/ProManagerOnline.Site.Web.Client/ProManagerOnline.Site.Web.Client.csproj" />
     <Project Path="src/ProManagerOnline.Site.Web/ProManagerOnline.Site.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

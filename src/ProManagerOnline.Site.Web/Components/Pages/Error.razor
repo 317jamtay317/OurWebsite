@@ -1,0 +1,26 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error — ProManager Online</PageTitle>
+
+<section class="container-site py-16">
+    <h1 class="text-3xl font-bold text-red-600">Something went wrong</h1>
+    <p class="mt-2 text-slate-600">An error occurred while processing your request.</p>
+
+    @if (ShowRequestId)
+    {
+        <p class="mt-4 text-sm text-slate-500"><strong>Request ID:</strong> <code>@RequestId</code></p>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}
