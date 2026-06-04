@@ -1,0 +1,84 @@
+@page
+@model CreateModel
+@{
+    ViewData["Title"] = "New product";
+}
+
+<section class="container-site max-w-2xl py-10">
+    <a class="text-sm font-medium text-brand hover:underline" asp-page="Index">&larr; Back to products</a>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900">New product</h1>
+    <p class="mt-1 text-slate-600">Create a draft. You can add subscription tiers and publish it next.</p>
+
+    <form method="post" class="card mt-8 flex flex-col gap-5">
+        <div asp-validation-summary="ModelOnly" class="field-error"></div>
+
+        <div>
+            <label class="label" asp-for="Input.Name">Name</label>
+            <input class="input mt-1" asp-for="Input.Name" placeholder="Workflows.AI" />
+            <span asp-validation-for="Input.Name" class="field-error"></span>
+        </div>
+
+        <div>
+            <label class="label" asp-for="Input.Slug">Slug</label>
+            <input class="input mt-1 font-mono" asp-for="Input.Slug" placeholder="workflows" />
+            <p class="mt-1 text-xs text-slate-500">Used in the product's web address, e.g. /workflows.</p>
+            <span asp-validation-for="Input.Slug" class="field-error"></span>
+        </div>
+
+        <div>
+            <label class="label" asp-for="Input.Category">Category</label>
+            <input class="input mt-1" asp-for="Input.Category" placeholder="Business management" />
+            <span asp-validation-for="Input.Category" class="field-error"></span>
+        </div>
+
+        <div>
+            <label class="label" asp-for="Input.Summary">Summary / description</label>
+            <textarea class="input mt-1" asp-for="Input.Summary" rows="3" placeholder="A one-line summary shown on listings."></textarea>
+            <span asp-validation-for="Input.Summary" class="field-error"></span>
+        </div>
+
+        <fieldset>
+            <legend class="label">Pricing</legend>
+            <div class="mt-2 flex flex-col gap-2">
+                <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                    <input type="radio" asp-for="Input.PricingKind" value="Tiered" data-pricing />
+                    <span><span class="font-semibold text-slate-900">Subscription</span> &mdash; one or more tiers (Basic, Pro, Enterprise)</span>
+                </label>
+                <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                    <input type="radio" asp-for="Input.PricingKind" value="Fixed" data-pricing />
+                    <span><span class="font-semibold text-slate-900">Fixed price</span> &mdash; a single one-time amount</span>
+                </label>
+                <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                    <input type="radio" asp-for="Input.PricingKind" value="Quote" data-pricing />
+                    <span><span class="font-semibold text-slate-900">Quote-based</span> &mdash; customers request a quote</span>
+                </label>
+            </div>
+        </fieldset>
+
+        <div id="fixed-price-field" data-pricing-panel="Fixed">
+            <label class="label" asp-for="Input.FixedPriceAmount">One-time price (USD)</label>
+            <input class="input mt-1" asp-for="Input.FixedPriceAmount" type="number" step="0.01" min="0" placeholder="499.00" />
+            <span asp-validation-for="Input.FixedPriceAmount" class="field-error"></span>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" class="btn-primary">Create product</button>
+            <a class="btn-secondary" asp-page="Index">Cancel</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            var radios = document.querySelectorAll('[data-pricing]');
+            var panel = document.querySelector('[data-pricing-panel="Fixed"]');
+            function sync() {
+                var selected = document.querySelector('[data-pricing]:checked');
+                if (panel) panel.style.display = (selected && selected.value === 'Fixed') ? '' : 'none';
+            }
+            radios.forEach(function (r) { r.addEventListener('change', sync); });
+            sync();
+        })();
+    </script>
+}
