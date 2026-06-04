@@ -9,5 +9,6 @@
     <Project Path="tests/ProManagerOnline.Site.Application.Tests/ProManagerOnline.Site.Application.Tests.csproj" />
     <Project Path="tests/ProManagerOnline.Site.Domain.Tests/ProManagerOnline.Site.Domain.Tests.csproj" />
     <Project Path="tests/ProManagerOnline.Site.Infrastructure.Tests/ProManagerOnline.Site.Infrastructure.Tests.csproj" />
+    <Project Path="tests/ProManagerOnline.Site.Web.Tests/ProManagerOnline.Site.Web.Tests.csproj" />
   </Folder>
 </Solution>
