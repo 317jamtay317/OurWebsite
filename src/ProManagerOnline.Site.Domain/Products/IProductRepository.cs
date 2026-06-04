@@ -16,17 +16,33 @@ public interface IProductRepository
 
     /// <summary>Determines whether any product already uses the given slug.</summary>
     /// <param name="slug">The slug to check.</param>
+    /// <param name="excludeId">A product to ignore in the check, used when editing that product's own slug.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns><see langword="true"/> if a product already uses the slug; otherwise <see langword="false"/>.</returns>
-    Task<bool> SlugExistsAsync(Slug slug, CancellationToken cancellationToken = default);
+    /// <returns><see langword="true"/> if another product already uses the slug; otherwise <see langword="false"/>.</returns>
+    Task<bool> SlugExistsAsync(Slug slug, ProductId? excludeId = null, CancellationToken cancellationToken = default);
 
     /// <summary>Lists all published products.</summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The published products, in no particular order.</returns>
     Task<IReadOnlyList<Product>> ListPublishedAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Lists every product, including drafts, for administration.</summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>All products, in no particular order.</returns>
+    Task<IReadOnlyList<Product>> ListAllAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Adds a new product to the store.</summary>
     /// <param name="product">The product to add.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task AddAsync(Product product, CancellationToken cancellationToken = default);
+
+    /// <summary>Persists changes made to an existing, tracked product.</summary>
+    /// <param name="product">The product whose changes to save.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task UpdateAsync(Product product, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes a product from the store.</summary>
+    /// <param name="product">The product to remove.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task RemoveAsync(Product product, CancellationToken cancellationToken = default);
 }
