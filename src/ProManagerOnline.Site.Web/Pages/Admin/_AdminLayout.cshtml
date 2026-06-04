@@ -1,0 +1,54 @@
+@{
+    var pageTitle = ViewData["Title"] as string;
+    var isSignedIn = User.Identity?.IsAuthenticated ?? false;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(string.IsNullOrEmpty(pageTitle) ? "Admin — ProManager Online" : pageTitle + " — ProManager Online Admin")</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+</head>
+<body class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 antialiased">
+    <header class="border-b border-slate-200 bg-white">
+        <div class="container-site flex h-[68px] items-center justify-between gap-4">
+            <a href="/admin" class="flex items-center gap-2 text-lg font-bold text-slate-900" aria-label="ProManager Online admin — home">
+                <svg class="h-8 w-8" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                    <rect width="64" height="64" rx="14" fill="#4f46e5" />
+                    <path d="M20 44V20h11a8 8 0 0 1 0 16h-5v8z" fill="#fff" />
+                    <circle cx="44" cy="22" r="4" fill="#06b6d4" />
+                </svg>
+                <span>ProManager<span class="text-brand">Online</span></span>
+                <span class="badge ml-1">Admin</span>
+            </a>
+
+            @if (isSignedIn)
+            {
+                <form method="post" asp-page="/Admin/Account/Logout" class="m-0">
+                    <button type="submit" class="btn-ghost px-3 py-2 text-sm">Sign out</button>
+                </form>
+            }
+            else
+            {
+                <a class="text-sm font-medium text-slate-500 hover:text-brand" href="/">View site</a>
+            }
+        </div>
+    </header>
+
+    <main id="main" class="flex-1">
+        @RenderBody()
+    </main>
+
+    <footer class="mt-auto border-t border-slate-200 bg-white">
+        <div class="container-site py-4 text-xs text-slate-500">
+            ProManager Online admin &middot; <a class="hover:text-brand" href="/">Back to public site</a>
+        </div>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
