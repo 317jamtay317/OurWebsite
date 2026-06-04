@@ -1,0 +1,24 @@
+<Project>
+
+  <!-- Shared settings for every project in the solution. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Documentation standard: every public and protected member in the core layers
+    (Domain and Application) must have an XML doc comment. Missing-doc warning CS1591
+    is promoted to a build error so the standard is enforced, not merely suggested.
+    Infrastructure is exempt because it contains EF Core's generated migrations;
+    its hand-written code is still documented by convention. Web and test projects
+    are exempt as presentation/test code.
+  -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Domain')) or $(MSBuildProjectName.EndsWith('.Application'))">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+</Project>
