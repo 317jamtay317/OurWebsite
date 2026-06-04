@@ -1,0 +1,102 @@
+@page "/admin/products"
+@attribute [Authorize]
+@inject ListAllProductsHandler ListAll
+@inject SetProductPublishedHandler SetPublished
+
+<PageTitle>Products — ProManager Online Admin</PageTitle>
+
+<div class="container-site py-10">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Products</h1>
+            <p class="mt-1 text-slate-600">Publish or unpublish products in the catalogue.</p>
+        </div>
+        <a class="btn-ghost" href="/admin">&larr; Dashboard</a>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">@_error</div>
+    }
+
+    @if (_products is null)
+    {
+        <p class="text-slate-500">Loading…</p>
+    }
+    else if (_products.Count == 0)
+    {
+        <div class="card text-slate-600">No products yet.</div>
+    }
+    else
+    {
+        <div class="grid gap-4">
+            @foreach (var product in _products)
+            {
+                <article class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-lg font-bold text-slate-900">@product.Name</h2>
+                            <span class="@StatusBadgeClass(product.Status)">@product.Status</span>
+                        </div>
+                        <p class="mt-1 text-sm text-slate-600">@product.Category &middot; /@product.Slug &middot; @PricingLabel(product)</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if (IsPublished(product))
+                        {
+                            <button class="btn-secondary" disabled="@_busy" @onclick="() => SetPublishedAsync(product, false)">Unpublish</button>
+                        }
+                        else
+                        {
+                            <button class="btn-primary" disabled="@_busy" @onclick="() => SetPublishedAsync(product, true)">Publish</button>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<AdminProductDto>? _products;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => _products = await ListAll.Handle();
+
+    private async Task SetPublishedAsync(AdminProductDto product, bool publish)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await SetPublished.Handle(new SetProductPublishedCommand(product.Id, publish));
+            await LoadAsync();
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (NotFoundException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static bool IsPublished(AdminProductDto product) => product.Status == nameof(ProductStatus.Published);
+
+    private static string PricingLabel(AdminProductDto product) =>
+        product.PricingKind == nameof(PricingKind.Quote)
+            ? "quote-based"
+            : $"{product.PlanCount} plan{(product.PlanCount == 1 ? "" : "s")}";
+
+    private static string StatusBadgeClass(string status) =>
+        status == nameof(ProductStatus.Published)
+            ? "inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800"
+            : "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600";
+}

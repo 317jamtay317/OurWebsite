@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,6 +6,8 @@ using ProManagerOnline.Site.Application;
 using ProManagerOnline.Site.Infrastructure;
 using ProManagerOnline.Site.Infrastructure.Identity;
 using ProManagerOnline.Site.Infrastructure.Persistence;
+using ProManagerOnline.Site.Web.Components;
+using ProManagerOnline.Site.Web.Components.Account;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +52,12 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+// Blazor (interactive server) powers the admin CMS, sharing the Identity cookie auth.
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -82,8 +91,17 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Required by Blazor's interactive components (form posts / SignalR handshake).
+app.UseAntiforgery();
+
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
+
+// The Blazor admin lives under /admin and requires an authenticated admin (unauthenticated
+// requests are redirected to the Razor Pages sign-in via the application cookie's LoginPath).
+app.MapRazorComponents<App>()
+   .AddInteractiveServerRenderMode()
+   .RequireAuthorization();
 
 app.Run();
