@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using ProManagerOnline.Site.Application;
+using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Infrastructure;
 using ProManagerOnline.Site.Infrastructure.Persistence;
+using ProManagerOnline.Site.Web.Api;
 using ProManagerOnline.Site.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,10 @@ builder.Services.AddRazorPages();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
+
+// Server-side implementation of the admin API, used when Interactive Auto components render on
+// the server and by the JSON endpoints below.
+builder.Services.AddScoped<IProductAdminApi, ServerProductAdminApi>();
 
 var app = builder.Build();
 
@@ -44,5 +50,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(ProManagerOnline.Site.Web.Client._Imports).Assembly);
 app.MapRazorPages();
+app.MapProductAdminApi();
 
 app.Run();

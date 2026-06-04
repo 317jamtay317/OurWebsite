@@ -1,8 +1,8 @@
 using ProManagerOnline.Site.Domain.Products;
 
-namespace ProManagerOnline.Site.Application.Products;
+namespace ProManagerOnline.Site.Contracts;
 
-/// <summary>A read model with the full detail of a product, used by the admin editor.</summary>
+/// <summary>The full detail of a product, used by the admin editor.</summary>
 /// <param name="Id">The product's identifier.</param>
 /// <param name="Slug">The product's URL-safe slug.</param>
 /// <param name="Name">The product's display name.</param>
@@ -10,9 +10,9 @@ namespace ProManagerOnline.Site.Application.Products;
 /// <param name="Summary">The product's one-line summary (also used as its description).</param>
 /// <param name="Status">Whether the product is a draft or published.</param>
 /// <param name="PricingKind">How the product is priced.</param>
-/// <param name="FixedPriceAmount">The one-time price when the product is fixed-price; otherwise <see langword="null"/>.</param>
+/// <param name="FixedPriceAmount">The one-time price when fixed-price; otherwise <see langword="null"/>.</param>
 /// <param name="Plans">The product's subscription plans, empty unless it is tiered.</param>
-public sealed record ProductDetailDto(
+public sealed record ProductDetail(
     Guid Id,
     string Slug,
     string Name,
@@ -21,4 +21,4 @@ public sealed record ProductDetailDto(
     ProductStatus Status,
     PricingKind PricingKind,
     decimal? FixedPriceAmount,
-    IReadOnlyList<PlanDetailDto> Plans);
+    IReadOnlyList<PlanDetail> Plans);

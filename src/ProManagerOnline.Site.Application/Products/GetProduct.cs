@@ -1,3 +1,4 @@
+using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Domain.Products;
 
 namespace ProManagerOnline.Site.Application.Products;
@@ -10,7 +11,7 @@ public sealed class GetProductHandler(IProductRepository products)
     /// <param name="id">The product identifier.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The product detail, or <see langword="null"/> if no product has that id.</returns>
-    public async Task<ProductDetailDto?> Handle(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ProductDetail?> Handle(Guid id, CancellationToken cancellationToken = default)
     {
         var product = await products.GetByIdAsync(new ProductId(id), cancellationToken);
         if (product is null)
@@ -19,7 +20,7 @@ public sealed class GetProductHandler(IProductRepository products)
         }
 
         var plans = product.Plans
-            .Select(plan => new PlanDetailDto(
+            .Select(plan => new PlanDetail(
                 plan.Id.Value,
                 plan.Name,
                 plan.Description,
@@ -30,7 +31,7 @@ public sealed class GetProductHandler(IProductRepository products)
                 plan.Features))
             .ToList();
 
-        return new ProductDetailDto(
+        return new ProductDetail(
             product.Id.Value,
             product.Slug.Value,
             product.Name,

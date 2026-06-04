@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/ProManagerOnline.Site.Application/ProManagerOnline.Site.Application.csproj" />
+    <Project Path="src/ProManagerOnline.Site.Contracts/ProManagerOnline.Site.Contracts.csproj" />
     <Project Path="src/ProManagerOnline.Site.Domain/ProManagerOnline.Site.Domain.csproj" />
     <Project Path="src/ProManagerOnline.Site.Infrastructure/ProManagerOnline.Site.Infrastructure.csproj" />
     <Project Path="src/ProManagerOnline.Site.Web.Client/ProManagerOnline.Site.Web.Client.csproj" />

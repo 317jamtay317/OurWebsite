@@ -1,3 +1,4 @@
+using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Domain.Products;
 
 namespace ProManagerOnline.Site.Application.Products;
@@ -9,12 +10,12 @@ public sealed class ListProductsHandler(IProductRepository products)
     /// <summary>Lists all products as admin summary read models.</summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>All products, in no particular order.</returns>
-    public async Task<IReadOnlyList<ProductListItemDto>> Handle(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ProductListItem>> Handle(CancellationToken cancellationToken = default)
     {
         var all = await products.ListAllAsync(cancellationToken);
 
         return all
-            .Select(product => new ProductListItemDto(
+            .Select(product => new ProductListItem(
                 product.Id.Value,
                 product.Slug.Value,
                 product.Name,

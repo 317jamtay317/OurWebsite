@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ProManagerOnline.Site.Application\ProManagerOnline.Site.Application.csproj" />
+    <ProjectReference Include="..\ProManagerOnline.Site.Contracts\ProManagerOnline.Site.Contracts.csproj" />
     <ProjectReference Include="..\ProManagerOnline.Site.Infrastructure\ProManagerOnline.Site.Infrastructure.csproj" />
     <ProjectReference Include="..\ProManagerOnline.Site.Web.Client\ProManagerOnline.Site.Web.Client.csproj" />
   </ItemGroup>
