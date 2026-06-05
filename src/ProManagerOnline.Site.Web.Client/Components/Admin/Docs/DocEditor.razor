@@ -4,130 +4,169 @@
 @inject IDocsAdminApi Api
 @inject NavigationManager Nav
 
-<div class="mb-6 flex items-center justify-between gap-4">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-900">@(IsEditing ? "Edit article" : "New article")</h1>
-    <a class="text-sm font-medium text-slate-500 hover:text-brand" href="/admin/docs">← Back to list</a>
-</div>
+<PageTitle>@(IsEditing ? "Edit article" : "New article") — ProManager Online Admin</PageTitle>
 
-@if (_loading)
-{
-    <p class="text-slate-500">Loading…</p>
-}
-else if (_loadError is not null)
-{
-    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">@_loadError</div>
-}
-else
-{
-    <div class="grid gap-8 lg:grid-cols-2">
-        <div class="space-y-4">
-            @if (_error is not null)
-            {
-                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">@_error</div>
-            }
-            @if (_saved)
-            {
-                <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Saved.</div>
-            }
+<div class="container-site py-10">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <nav class="text-sm text-slate-500" aria-label="Breadcrumb">
+                <a class="hover:text-brand" href="/admin/docs">Documentation</a>
+                <span class="px-1.5 text-slate-300" aria-hidden="true">/</span>
+                <span class="text-slate-700">@(IsEditing ? "Edit" : "New")</span>
+            </nav>
+            <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                @(IsEditing ? "Edit article" : "New article")
+            </h1>
+        </div>
+        <a class="btn-ghost" href="/admin/docs">&larr; Back to list</a>
+    </div>
 
-            <div>
-                <label class="block text-sm font-medium text-slate-700" for="product">Product</label>
-                <select id="product"
-                        class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
-                        @bind="_productId" disabled="@IsEditing">
-                    @foreach (var product in _products)
-                    {
-                        <option value="@product.Id">@product.Name</option>
-                    }
-                </select>
-            </div>
+    @if (_loading)
+    {
+        <div class="card animate-pulse">
+            <div class="h-4 w-40 rounded bg-slate-200"></div>
+            <div class="mt-4 h-10 w-full rounded bg-slate-100"></div>
+            <div class="mt-4 h-40 w-full rounded bg-slate-100"></div>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="card">
+            <p class="text-slate-700">@_loadError</p>
+            <a class="btn-secondary mt-5" href="/admin/docs">&larr; Back to list</a>
+        </div>
+    }
+    else
+    {
+        <div class="grid items-start gap-8 lg:grid-cols-2">
+            <div class="card space-y-5">
+                @if (_error is not null)
+                {
+                    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_error</div>
+                }
 
-            <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700" for="title">Title</label>
-                    <input id="title" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                           @bind="_title" @bind:event="oninput" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="section">Section</label>
-                    <input id="section" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                           @bind="_section" @bind:event="oninput" placeholder="Getting started" />
-                </div>
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="slug">Slug</label>
-                    <input id="slug"
-                           class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
-                           @bind="_slug" disabled="@IsEditing" placeholder="getting-started" />
-                    @if (IsEditing)
-                    {
-                        <p class="mt-1 text-xs text-slate-400">The slug can't change after creation.</p>
-                    }
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="position">Position</label>
-                    <input id="position" type="number" min="0"
-                           class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" @bind="_position" />
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-700" for="body">Body (Markdown)</label>
-                <textarea id="body" rows="14"
-                          class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm leading-6"
-                          @bind="_body" @bind:event="oninput"></textarea>
-            </div>
-
-            <div>
-                <span class="block text-sm font-medium text-slate-700">Screenshot</span>
-                <div class="relative mt-1">
-                    <InputFile OnChange="OnFileSelectedAsync" accept="image/*"
-                               class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
-                    <div class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
-                        @if (_uploading)
+                    <label class="label" for="product">Product</label>
+                    <select id="product"
+                            class="input disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                            @bind="_productId" @bind:after="LoadSectionsAsync" disabled="@IsEditing">
+                        @foreach (var product in _products)
                         {
-                            <span>Uploading…</span>
+                            <option value="@product.Id">@product.Name</option>
                         }
-                        else
-                        {
-                            <span><span class="font-semibold text-brand">Choose an image</span> or drag &amp; drop</span>
-                            <span class="mt-1 text-xs text-slate-400">It is added to the body and shown in the preview.</span>
-                        }
+                    </select>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="label" for="title">Title</label>
+                        <input id="title" class="input" @bind="Title" @bind:event="oninput" placeholder="Getting started" />
+                    </div>
+                    <div>
+                        <label class="label" for="section">Section</label>
+                        <input id="section" class="input" list="doc-sections" placeholder="Introduction"
+                               @bind="Section" @bind:event="oninput" />
+                        <datalist id="doc-sections">
+                            @foreach (var sectionName in _sectionSuggestions)
+                            {
+                                <option value="@sectionName"></option>
+                            }
+                        </datalist>
                     </div>
                 </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="label" for="slug">Slug</label>
+                        <input id="slug"
+                               class="input disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                               @bind="Slug" @bind:event="oninput" disabled="@IsEditing" placeholder="getting-started" />
+                        <p class="mt-1 text-xs text-slate-400">
+                            @(IsEditing ? "The slug can't change after creation." : "Used in the page URL — lowercase, dashes between words.")
+                        </p>
+                    </div>
+                    <div>
+                        <label class="label" for="position">Position</label>
+                        <input id="position" type="number" min="0" class="input" @bind="Position" @bind:event="oninput" />
+                        <p class="mt-1 text-xs text-slate-400">Order within the section (lowest first).</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="label" for="body">Body (Markdown)</label>
+                    <textarea id="body" rows="16"
+                              class="input resize-y font-mono text-sm leading-6"
+                              @bind="Body" @bind:event="oninput" placeholder="Write the article in Markdown…"></textarea>
+                </div>
+
+                <div>
+                    <span class="label">Screenshot</span>
+                    <div class="relative mt-1">
+                        <InputFile OnChange="OnFileSelectedAsync" accept="image/*"
+                                   class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
+                        <div class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 transition hover:border-brand/60 hover:bg-brand-light/30">
+                            @if (_uploading)
+                            {
+                                <span class="font-medium text-brand">Uploading…</span>
+                            }
+                            else
+                            {
+                                <span><span class="font-semibold text-brand">Choose an image</span> or drag &amp; drop</span>
+                                <span class="mt-1 text-xs text-slate-400">Inserted into the body and shown in the preview.</span>
+                            }
+                        </div>
+                    </div>
+                    @if (_lastUploaded is not null)
+                    {
+                        <p class="mt-2 text-xs text-green-700">✓ Added <span class="font-medium">@_lastUploaded</span> to the body.</p>
+                    }
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+                    <button type="button" class="btn-primary" @onclick="SaveAsync" disabled="@(!CanSave)">
+                        @(_saving ? "Saving…" : IsEditing ? "Save changes" : "Create article")
+                    </button>
+                    @if (_saved)
+                    {
+                        <span class="text-sm font-medium text-green-700">✓ Saved</span>
+                    }
+                    else if (!CanSave && !_saving)
+                    {
+                        <span class="text-xs text-slate-400">Title, section@(IsEditing ? "" : " and slug") required.</span>
+                    }
+
+                    @if (IsEditing)
+                    {
+                        <div class="ml-auto flex items-center gap-3">
+                            <span class="@StatusPillClass">@(_published ? "Published" : "Draft")</span>
+                            @if (_published)
+                            {
+                                <button type="button" class="btn-secondary" @onclick="() => SetStatusAsync(false)" disabled="@_saving">Unpublish</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn-primary" @onclick="() => SetStatusAsync(true)" disabled="@_saving">Publish</button>
+                            }
+                        </div>
+                    }
+                </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 pt-2">
-                <button type="button" class="btn-primary" @onclick="SaveAsync" disabled="@_saving">
-                    @(_saving ? "Saving…" : "Save")
-                </button>
-                @if (IsEditing)
-                {
-                    @if (_published)
+            <div class="lg:sticky lg:top-6">
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Live preview</p>
+                    @if (IsEditing && _published)
                     {
-                        <button type="button" class="btn-secondary" @onclick="() => SetStatusAsync(false)" disabled="@_saving">Unpublish</button>
+                        <a class="text-sm font-medium text-brand hover:underline" href="@PublicHref" target="_blank" rel="noopener">View on site ↗</a>
                     }
-                    else
-                    {
-                        <button type="button" class="btn-secondary" @onclick="() => SetStatusAsync(true)" disabled="@_saving">Publish</button>
-                    }
-                    <span class="text-sm font-semibold @(_published ? "text-green-700" : "text-amber-700")">
-                        @(_published ? "Published" : "Draft")
-                    </span>
-                }
+                </div>
+                <div class="doc-content rounded-card border border-slate-200 bg-white p-6 shadow-card">
+                    @Preview
+                </div>
             </div>
         </div>
-
-        <div>
-            <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Live preview</p>
-            <div class="doc-content mt-2 rounded-card border border-slate-200 bg-white p-6 shadow-card">
-                @Preview
-            </div>
-        </div>
-    </div>
-}
+    }
+</div>
 
 @code {
     /// <summary>The article's id when editing; <see langword="null"/> when creating a new article.</summary>
@@ -137,7 +176,9 @@ else
         new Markdig.MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
     private IReadOnlyList<ProductOption> _products = [];
+    private IReadOnlyList<string> _sectionSuggestions = [];
     private Guid _productId;
+
     private string _slug = "";
     private string _title = "";
     private string _section = "";
@@ -151,8 +192,28 @@ else
     private bool _saved;
     private bool _saving;
     private bool _uploading;
+    private string? _lastUploaded;
 
     private bool IsEditing => Id.HasValue;
+
+    // Editing any field clears the "Saved" confirmation so it only reflects a clean, persisted state.
+    private string Title { get => _title; set { _title = value; _saved = false; } }
+    private string Section { get => _section; set { _section = value; _saved = false; } }
+    private string Slug { get => _slug; set { _slug = value; _saved = false; } }
+    private string Body { get => _body; set { _body = value; _saved = false; } }
+    private int Position { get => _position; set { _position = value; _saved = false; } }
+
+    private bool CanSave =>
+        !_saving
+        && !string.IsNullOrWhiteSpace(_title)
+        && !string.IsNullOrWhiteSpace(_section)
+        && (IsEditing || !string.IsNullOrWhiteSpace(_slug));
+
+    private string StatusPillClass => _published
+        ? "inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800"
+        : "inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800";
+
+    private string PublicHref => $"/docs/{_productId}/{_slug}";
 
     private MarkupString Preview => new(Markdig.Markdown.ToHtml(
         string.IsNullOrWhiteSpace(_body) ? "*Nothing to preview yet.*" : _body, Pipeline));
@@ -184,6 +245,8 @@ else
             {
                 _productId = QueryProductId() ?? (_products.Count > 0 ? _products[0].Id : Guid.Empty);
             }
+
+            await LoadSectionsAsync();
         }
         catch (Exception ex)
         {
@@ -192,6 +255,30 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task LoadSectionsAsync()
+    {
+        if (_productId == Guid.Empty)
+        {
+            return;
+        }
+
+        try
+        {
+            var articles = await Api.GetArticlesAsync(_productId);
+            _sectionSuggestions = articles
+                .Select(article => article.Section)
+                .Where(section => !string.IsNullOrWhiteSpace(section))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(section => section)
+                .ToList();
+        }
+        catch
+        {
+            // Section suggestions are a convenience; failing to load them must never block authoring.
+            _sectionSuggestions = [];
         }
     }
 
@@ -259,7 +346,8 @@ else
             await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
             var url = await Api.UploadScreenshotAsync(_productId, file.Name, stream);
             var separator = string.IsNullOrEmpty(_body) ? "" : "\n\n";
-            _body += $"{separator}![{file.Name}]({url})\n";
+            Body = $"{_body}{separator}![{file.Name}]({url})\n";
+            _lastUploaded = file.Name;
         }
         catch (Exception ex)
         {
