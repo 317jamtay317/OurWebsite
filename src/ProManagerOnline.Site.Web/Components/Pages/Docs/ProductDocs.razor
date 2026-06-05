@@ -1,0 +1,127 @@
+@page "/docs/{ProductId:guid}/{PageName?}"
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Html
+@using ProManagerOnline.Site.Application.Documentation
+@using ProManagerOnline.Site.Web.Rendering
+@inject GetProductDocsHandler GetProductDocs
+@inject GetDocArticleHandler GetDocArticle
+@inject IMarkdownRenderer Markdown
+@inject NavigationManager Navigation
+
+<PageTitle>@_title</PageTitle>
+
+@if (_navigation is not null && !_notFound)
+{
+    <div class="container-site py-8">
+        <nav aria-label="Breadcrumb" class="mb-6 text-sm text-slate-500">
+            <ol class="flex flex-wrap items-center gap-1.5">
+                <li><a class="hover:text-brand" href="/docs">Docs</a></li>
+                <li aria-hidden="true">/</li>
+                <li><a class="hover:text-brand" href="@($"/docs/{_navigation.ProductId}")">@_navigation.ProductName</a></li>
+                @if (_article is not null)
+                {
+                    <li aria-hidden="true">/</li>
+                    <li class="font-medium text-slate-700" aria-current="page">@_article.Title</li>
+                }
+            </ol>
+        </nav>
+
+        <div class="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
+            <aside class="lg:sticky lg:top-[84px] lg:self-start" aria-label="Documentation navigation">
+                <details open>
+                    <summary class="mb-2 cursor-pointer list-none rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-900 lg:hidden">
+                        Documentation menu
+                    </summary>
+                    <DocsSidebar Navigation="_navigation" CurrentSlug="@_article?.Slug" />
+                </details>
+            </aside>
+
+            <article class="min-w-0">
+                @if (_article is null)
+                {
+                    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@_navigation.ProductName documentation</h1>
+                    <p class="mt-3 text-lg text-slate-600">Choose a topic from the list below or the menu to begin.</p>
+
+                    <div class="mt-8 space-y-8">
+                        @foreach (var docSection in _navigation.Sections)
+                        {
+                            <section>
+                                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">@docSection.Section</h2>
+                                <ul class="mt-3 space-y-2">
+                                    @foreach (var article in docSection.Articles)
+                                    {
+                                        <li>
+                                            <a class="font-medium text-brand hover:underline"
+                                               href="@($"/docs/{_navigation.ProductId}/{article.Slug}")">@article.Title</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </section>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-sm font-semibold uppercase tracking-wide text-brand">@_article.Section</p>
+                    <div class="doc-content mt-2">@_articleHtml</div>
+                }
+            </article>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>The product whose documentation is being read, from the route.</summary>
+    [Parameter] public Guid ProductId { get; set; }
+
+    /// <summary>The article slug from the route; <see langword="null"/> on the product overview.</summary>
+    [Parameter] public string? PageName { get; set; }
+
+    private DocNavigationDto? _navigation;
+    private DocPageDto? _article;
+    private MarkupString _articleHtml;
+    private string _title = "Documentation";
+    private bool _notFound;
+
+    /// <summary>
+    /// Loads the navigation and, when a page name is supplied, the requested article. Renders a 404
+    /// when the product is not published / has no documentation, or the requested article is missing.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        _notFound = false;
+        _article = null;
+
+        _navigation = await GetProductDocs.Handle(ProductId);
+        if (_navigation is null)
+        {
+            _notFound = true;
+            Navigation.NotFound();
+            return;
+        }
+
+        if (string.IsNullOrEmpty(PageName))
+        {
+            _title = $"{_navigation.ProductName} documentation";
+            return;
+        }
+
+        _article = await GetDocArticle.Handle(ProductId, PageName);
+        if (_article is null)
+        {
+            _notFound = true;
+            Navigation.NotFound();
+            return;
+        }
+
+        _articleHtml = ToMarkup(Markdown.Render(_article.Body));
+        _title = _article.Title;
+    }
+
+    private static MarkupString ToMarkup(IHtmlContent content)
+    {
+        using var writer = new StringWriter();
+        content.WriteTo(writer, HtmlEncoder.Default);
+        return new MarkupString(writer.ToString());
+    }
+}

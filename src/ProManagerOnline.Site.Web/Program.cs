@@ -2,13 +2,18 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProManagerOnline.Site.Application;
+using ProManagerOnline.Site.Application.Documentation;
 using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Infrastructure;
 using ProManagerOnline.Site.Infrastructure.Identity;
 using ProManagerOnline.Site.Infrastructure.Persistence;
+using ProManagerOnline.Site.Web.Admin;
 using ProManagerOnline.Site.Web.Api;
 using ProManagerOnline.Site.Web.Components;
 using ProManagerOnline.Site.Web.Components.Account;
+using ProManagerOnline.Site.Web.Media;
+using ProManagerOnline.Site.Web.Rendering;
+using ProManagerOnline.Site.Web.Client.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,9 +32,16 @@ builder.Services.AddRazorPages(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
 
-// Server-side implementation of the admin API, used when Interactive Auto components render on
-// the server and by the JSON endpoints the WebAssembly client calls.
+// Server-side implementation of the product admin API, used when Interactive Auto components
+// render on the server and by the JSON endpoints the WebAssembly client calls.
 builder.Services.AddScoped<IProductAdminApi, ServerProductAdminApi>();
+
+// Documentation feature: Markdown rendering for the public reader, screenshot storage for the
+// authoring admin, and the in-process gateway behind the Interactive Auto documentation admin
+// (the browser side calls the JSON API instead).
+builder.Services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
+builder.Services.AddScoped<IDocMediaStorage, WwwrootDocMediaStorage>();
+builder.Services.AddScoped<IDocsAdminApi, ServerDocsAdminApi>();
 
 // Model Context Protocol server, exposing the site's tools over Streamable HTTP.
 builder.Services
@@ -37,8 +49,8 @@ builder.Services
     .WithHttpTransport()
     .WithToolsFromAssembly();
 
-// ASP.NET Core Identity (cookie auth, password hashing, lockout, reset tokens). The EF stores
-// live on SiteDbContext; the account/email services are registered by AddInfrastructure.
+// ASP.NET Core Identity (cookie auth, password hashing, lockout, reset tokens). The EF stores live
+// on SiteDbContext; the account/email services are registered by AddInfrastructure.
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
@@ -67,8 +79,11 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+// Flow the Identity auth state into the Blazor components. The persisting provider revalidates the
+// security stamp on the server circuit AND persists the signed-in user to the page, so Interactive
+// Auto admin components can authorize once they are running in WebAssembly.
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
 
 var app = builder.Build();
 
@@ -101,6 +116,7 @@ else
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+app.UseStaticFiles();       // serves runtime-uploaded documentation screenshots from wwwroot/docs-media
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -132,7 +148,10 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(ProManagerOnline.Site.Web.Client._Imports).Assembly);
 app.MapRazorPages();
+
+// JSON APIs the WebAssembly admin clients call (each requires an authenticated admin internally).
 app.MapProductAdminApi();
+app.MapAdminDocsApi();
 
 // Model Context Protocol endpoint (Streamable HTTP) for MCP clients.
 app.MapMcp("/mcp");

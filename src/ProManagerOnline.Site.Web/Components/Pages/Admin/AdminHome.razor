@@ -1,0 +1,21 @@
+@page "/admin"
+
+<PageTitle>Admin — ProManager Online</PageTitle>
+
+<div class="container-site py-10">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Admin</h1>
+    <p class="mt-1 text-slate-600">Manage your catalogue and its documentation.</p>
+
+    <div class="mt-8 grid gap-6 sm:grid-cols-2">
+        <a class="card flex flex-col transition hover:shadow-card-lg" href="/admin/products">
+            <h2 class="text-xl font-bold text-slate-900">Products</h2>
+            <p class="mt-2 flex-1 text-slate-600">Create and edit products, their plans and pricing.</p>
+            <span class="mt-4 text-sm font-semibold text-brand">Manage products &rarr;</span>
+        </a>
+        <a class="card flex flex-col transition hover:shadow-card-lg" href="/admin/docs">
+            <h2 class="text-xl font-bold text-slate-900">Documentation</h2>
+            <p class="mt-2 flex-1 text-slate-600">Write, edit and publish help articles for each product.</p>
+            <span class="mt-4 text-sm font-semibold text-brand">Manage documentation &rarr;</span>
+        </a>
+    </div>
+</div>

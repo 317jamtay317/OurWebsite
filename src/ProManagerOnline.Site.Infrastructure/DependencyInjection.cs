@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using ProManagerOnline.Site.Application.Administration;
 using ProManagerOnline.Site.Application.Email;
+using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
 using ProManagerOnline.Site.Infrastructure.Email;
 using ProManagerOnline.Site.Infrastructure.Identity;
@@ -29,6 +30,7 @@ public static class DependencyInjection
             // catalogue a single query is fine, so silence the split-query advisory warning.
             .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.MultipleCollectionIncludeWarning)));
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IDocArticleRepository, DocArticleRepository>();
         services.AddScoped<IAdminAccountService, AdminAccountService>();
         services.AddScoped<IEmailSender, LoggingEmailSender>();
 
