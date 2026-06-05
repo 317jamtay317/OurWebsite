@@ -22,6 +22,12 @@ builder.Services.AddRazorPages(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
 
+// Model Context Protocol server, exposing the site's tools over Streamable HTTP.
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
+
 // ASP.NET Core Identity (cookie auth, password hashing, lockout, reset tokens). The EF stores
 // live on SiteDbContext; the account/email services are registered by AddInfrastructure.
 builder.Services
@@ -97,6 +103,9 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
+
+// Model Context Protocol endpoint (Streamable HTTP) for MCP clients.
+app.MapMcp("/mcp");
 
 // The Blazor admin lives under /admin and requires an authenticated admin (unauthenticated
 // requests are redirected to the Razor Pages sign-in via the application cookie's LoginPath).
