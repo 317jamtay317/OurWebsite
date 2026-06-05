@@ -1,18 +1,47 @@
 # ==========================================================================
-# Run the ProManager Online site locally with Docker Compose.
+# Run the whole ProManager Online stack locally with Docker Compose:
+# the .NET Blazor web app + a SQL Server database.
 #
-#   docker compose up --build      # build and start (http://localhost:8080)
-#   docker compose up -d --build   # same, but detached/background
-#   docker compose down            # stop and remove the container
+#   docker compose up --build        # build and start (http://localhost:8080)
+#   docker compose up -d --build     # same, detached
+#   docker compose down              # stop and remove
+#   docker compose down -v           # also drop the database volume
 #
-# Change the host port by editing the left-hand number under "ports"
-# (for example "3000:80" to serve on http://localhost:3000).
+# Admin sign-in (seeded on first start in Development):
+#   email:    admin@promanageronline.com
+#   password: Admin123!
 # ==========================================================================
 services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pmo_Str0ng!Pass1"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   web:
     build: .
-    image: promanageronline-site
-    container_name: promanageronline-site
+    image: promanageronline-web
     ports:
-      - "8080:80"
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__SiteDatabase: "Server=db;Database=ProManagerOnlineSite;User Id=sa;Password=Pmo_Str0ng!Pass1;TrustServerCertificate=True;MultipleActiveResultSets=true"
+      Admin__Email: "admin@promanageronline.com"
+      Admin__InitialPassword: "Admin123!"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  mssql-data:

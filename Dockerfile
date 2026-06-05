@@ -1,23 +1,30 @@
 # ==========================================================================
-# ProManager Online — static marketing site.
-# Served by nginx. No build step: the site is plain HTML/CSS/JS.
-#
-#   docker compose up --build      # build + run at http://localhost:8080
-#   docker build -t pmo-site .     # build the image manually
-#   docker run -p 8080:80 pmo-site # run the image manually
+# ProManager Online — .NET 10 Blazor Web App (Interactive Auto) + SQL Server.
+# Multi-stage: build the Tailwind CSS, publish the app (incl. the WASM client),
+# then run on the ASP.NET runtime image (listens on port 8080).
 # ==========================================================================
-FROM nginx:1.27-alpine
 
-# Use our server configuration (clean URLs, gzip, security headers, 404).
-COPY default.conf /etc/nginx/conf.d/default.conf
+# ── Stage 1: build the Tailwind CSS bundle ────────────────────────────────
+FROM node:20-alpine AS css
+WORKDIR /src/src/ProManagerOnline.Site.Web
+COPY src/ProManagerOnline.Site.Web/package*.json ./
+RUN npm install
+# Tailwind scans .razor in both the Web and Web.Client projects (see app.css @source).
+COPY src/ProManagerOnline.Site.Web/ ./
+COPY src/ProManagerOnline.Site.Web.Client/ /src/src/ProManagerOnline.Site.Web.Client/
+RUN npm run build:css
 
-# Copy the static site into nginx's web root.
-COPY public/ /usr/share/nginx/html/
+# ── Stage 2: restore, build and publish the .NET app ──────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY . .
+# Use the CSS produced by the css stage (wwwroot is otherwise build output).
+COPY --from=css /src/src/ProManagerOnline.Site.Web/wwwroot/css/app.css src/ProManagerOnline.Site.Web/wwwroot/css/app.css
+RUN dotnet publish src/ProManagerOnline.Site.Web/ProManagerOnline.Site.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-EXPOSE 80
-
-# Report container health by fetching the home page.
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -q -O /dev/null http://localhost/ || exit 1
-
-# nginx:alpine already starts nginx in the foreground by default.
+# ── Stage 3: runtime image ────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish ./
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "ProManagerOnline.Site.Web.dll"]
