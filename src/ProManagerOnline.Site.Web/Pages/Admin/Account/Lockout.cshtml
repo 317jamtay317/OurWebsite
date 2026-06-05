@@ -1,0 +1,18 @@
+@page
+@{
+    ViewData["Title"] = "Account locked";
+}
+
+<div class="container-site flex justify-center py-12 sm:py-16">
+    <div class="card w-full max-w-md text-center">
+        <h1 class="text-xl font-bold text-slate-900">Account temporarily locked</h1>
+        <p class="mt-2 text-sm text-slate-600">
+            Too many failed sign-in attempts. For your security this account is locked for a short while.
+            Please try again later, or reset your password.
+        </p>
+        <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <a class="btn-secondary" asp-page="./ForgotPassword">Reset password</a>
+            <a class="btn-ghost" asp-page="./Login">Back to sign in</a>
+        </div>
+    </div>
+</div>

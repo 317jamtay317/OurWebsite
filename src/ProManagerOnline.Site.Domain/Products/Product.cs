@@ -134,6 +134,11 @@ public sealed class Product
         Status = ProductStatus.Published;
     }
 
+    /// <summary>
+    /// Returns the product to draft, hiding it from the public site. Safe to call on a draft.
+    /// </summary>
+    public void Unpublish() => Status = ProductStatus.Draft;
+
     private Plan FindPlan(PlanId planId) =>
         _plans.FirstOrDefault(plan => plan.Id == planId)
         ?? throw new DomainException($"This product has no plan with id {planId.Value}.");

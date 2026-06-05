@@ -8,8 +8,9 @@ namespace ProManagerOnline.Site.Web.Admin;
 /// <summary>
 /// Maps the JSON API the WebAssembly documentation admin calls. Each endpoint delegates to
 /// <see cref="IDocsAdminApi"/> (resolved to the in-process server implementation) and translates
-/// application exceptions to HTTP status codes. Mapped only in Development — there is no
-/// authentication yet, so it must not be exposed in production.
+/// application exceptions to HTTP status codes. Every endpoint requires a signed-in admin (the
+/// browser sends the Identity cookie); antiforgery is disabled because the client calls these as a
+/// JSON/multipart API rather than posting an antiforgery-tokened form.
 /// </summary>
 public static class AdminDocsApi
 {
@@ -18,9 +19,9 @@ public static class AdminDocsApi
     /// <returns>The same builder, for chaining.</returns>
     public static IEndpointRouteBuilder MapAdminDocsApi(this IEndpointRouteBuilder app)
     {
-        // The browser client cannot supply an antiforgery token, and the admin is Development-only,
-        // so antiforgery is disabled on these endpoints.
-        var group = app.MapGroup("/api/admin/docs").DisableAntiforgery();
+        // Every endpoint requires a signed-in admin (the browser sends the Identity cookie).
+        // Antiforgery is disabled because the WebAssembly client calls these as a JSON/multipart API.
+        var group = app.MapGroup("/api/admin/docs").RequireAuthorization().DisableAntiforgery();
 
         group.MapGet("/products", async (IDocsAdminApi api, CancellationToken cancellationToken)
             => Results.Ok(await api.GetPublishedProductsAsync(cancellationToken)));
@@ -92,7 +93,7 @@ public static class AdminDocsApi
                 await using var stream = file.OpenReadStream();
                 var url = await api.UploadScreenshotAsync(productId, file.FileName, stream, cancellationToken);
                 return Results.Ok(new UploadResponse(url));
-            }).DisableAntiforgery();
+            }).RequireAuthorization().DisableAntiforgery();
 
         return app;
     }

@@ -21,6 +21,12 @@
         "--ConnectionStrings:SiteDatabase=Server=(localdb)\\MSSQLLocalDB;Database=ProManagerOnlineSite_DocsVerify;Trusted_Connection=True;MultipleActiveResultSets=true"
       ],
       "port": 5071
+    },
+    {
+      "name": "pmo-admin",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/ProManagerOnline.Site.Web", "--launch-profile", "http", "--urls", "http://localhost:5090"],
+      "port": 5090
     }
   ]
 }

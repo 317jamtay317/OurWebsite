@@ -68,5 +68,50 @@ public sealed class ProductRepositoryTests : IDisposable
         Assert.False(await repository.SlugExistsAsync(Slug.Create("air-compliance")));
     }
 
+    [Fact]
+    public async Task ListAll_IncludesDraftsAndPublished()
+    {
+        await using var context = new SiteDbContext(_options);
+        var repository = new ProductRepository(context);
+        await repository.AddAsync(Product.CreateDraft(Slug.Create("draft-app"), "Draft", "Tools", "A draft."));
+        var live = Product.CreateDraft(Slug.Create("live-app"), "Live", "Tools", "Published.");
+        live.MakeQuoteBased();
+        live.Publish();
+        await repository.AddAsync(live);
+
+        var all = await repository.ListAllAsync();
+
+        Assert.Equal(2, all.Count);
+        Assert.Contains(all, p => p.Slug.Value == "draft-app" && p.Status == ProductStatus.Draft);
+        Assert.Contains(all, p => p.Slug.Value == "live-app" && p.Status == ProductStatus.Published);
+    }
+
+    [Fact]
+    public async Task Update_PersistsAStatusChange_AndLeavesPlansIntact()
+    {
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Tools", "Summary.");
+        product.AddPlan("Team", "For crews.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var repository = new ProductRepository(context);
+            var loaded = await repository.GetByIdAsync(product.Id);
+            loaded!.Publish();
+            await repository.UpdateAsync(loaded);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var reloaded = await new ProductRepository(context).GetByIdAsync(product.Id);
+            Assert.Equal(ProductStatus.Published, reloaded!.Status);
+            Assert.Single(reloaded.Plans);
+            Assert.Equal("Team", reloaded.Plans.Single().Name);
+        }
+    }
+
     public void Dispose() => _connection.Dispose();
 }

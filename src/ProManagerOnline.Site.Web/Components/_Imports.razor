@@ -1,9 +1,17 @@
 @using System.Net.Http
-@using Microsoft.AspNetCore.Components
+@using System.Threading.Tasks
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Microsoft.JSInterop
 @using ProManagerOnline.Site.Web
 @using ProManagerOnline.Site.Web.Components
+@using ProManagerOnline.Site.Web.Components.Account
 @using ProManagerOnline.Site.Web.Components.Layout
+@using ProManagerOnline.Site.Application.Products
+@using ProManagerOnline.Site.Application.Exceptions
+@using ProManagerOnline.Site.Domain.Products
+@using ProManagerOnline.Site.Domain.Exceptions
