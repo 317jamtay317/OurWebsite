@@ -69,21 +69,94 @@ public sealed class ProductRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task ListAll_IncludesDraftsAndPublished()
+    public async Task AddAndGetById_RoundTripsPlanFeaturesInOrder()
     {
-        await using var context = new SiteDbContext(_options);
-        var repository = new ProductRepository(context);
-        await repository.AddAsync(Product.CreateDraft(Slug.Create("draft-app"), "Draft", "Tools", "A draft."));
-        var live = Product.CreateDraft(Slug.Create("live-app"), "Live", "Tools", "Published.");
-        live.MakeQuoteBased();
-        live.Publish();
-        await repository.AddAsync(live);
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
+        product.AddPlan(
+            "Pro", "For teams.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly,
+            ["Unlimited projects", "Priority support", "Advanced reports"]);
 
-        var all = await repository.ListAllAsync();
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
 
-        Assert.Equal(2, all.Count);
-        Assert.Contains(all, p => p.Slug.Value == "draft-app" && p.Status == ProductStatus.Draft);
-        Assert.Contains(all, p => p.Slug.Value == "live-app" && p.Status == ProductStatus.Published);
+        await using (var context = new SiteDbContext(_options))
+        {
+            var loaded = await new ProductRepository(context).GetByIdAsync(product.Id);
+            var plan = Assert.Single(loaded!.Plans);
+            Assert.Equal(new[] { "Unlimited projects", "Priority support", "Advanced reports" }, plan.Features);
+        }
+    }
+
+    [Fact]
+    public async Task AddAndGetById_RoundTripsFixedPrice()
+    {
+        var product = Product.CreateDraft(Slug.Create("audit"), "Compliance Audit", "Compliance", "Summary.");
+        product.MakeFixedPrice(Money.Create(499m, Currency.Usd));
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var loaded = await new ProductRepository(context).GetByIdAsync(product.Id);
+            Assert.Equal(PricingKind.Fixed, loaded!.PricingKind);
+            Assert.NotNull(loaded.FixedPrice);
+            Assert.Equal(499m, loaded.FixedPrice!.Amount);
+        }
+    }
+
+    [Fact]
+    public async Task AddAndGetById_TieredProduct_HasNoFixedPrice()
+    {
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
+        product.AddPlan("Team", "", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var loaded = await new ProductRepository(context).GetByIdAsync(product.Id);
+            Assert.Null(loaded!.FixedPrice);
+        }
+    }
+
+    [Fact]
+    public async Task Update_AppliesPlanEditsAndRemovals()
+    {
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
+        var solo = product.AddPlan("Solo", "old", Money.Create(29m, Currency.Usd), BillingPeriod.Monthly, ["A"]);
+        var team = product.AddPlan("Team", "", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var repository = new ProductRepository(context);
+            var loaded = await repository.GetByIdAsync(product.Id);
+            loaded!.UpdatePlan(solo, "Solo Plus", "new", Money.Create(39m, Currency.Usd), BillingPeriod.Annual, ["B", "C"]);
+            loaded.RemovePlan(team);
+            await repository.UpdateAsync(loaded);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var loaded = await new ProductRepository(context).GetByIdAsync(product.Id);
+            var plan = Assert.Single(loaded!.Plans);
+            Assert.Equal("Solo Plus", plan.Name);
+            Assert.Equal(39m, plan.Price.Amount);
+            Assert.Equal(BillingPeriod.Annual, plan.BillingPeriod);
+            Assert.Equal(new[] { "B", "C" }, plan.Features);
+        }
     }
 
     [Fact]
@@ -91,6 +164,7 @@ public sealed class ProductRepositoryTests : IDisposable
     {
         var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Tools", "Summary.");
         product.AddPlan("Team", "For crews.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
+
         await using (var context = new SiteDbContext(_options))
         {
             await new ProductRepository(context).AddAsync(product);
@@ -111,6 +185,57 @@ public sealed class ProductRepositoryTests : IDisposable
             Assert.Single(reloaded.Plans);
             Assert.Equal("Team", reloaded.Plans.Single().Name);
         }
+    }
+
+    [Fact]
+    public async Task Remove_DeletesTheProduct()
+    {
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var repository = new ProductRepository(context);
+            await repository.RemoveAsync((await repository.GetByIdAsync(product.Id))!);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            Assert.Null(await new ProductRepository(context).GetByIdAsync(product.Id));
+        }
+    }
+
+    [Fact]
+    public async Task ListAll_IncludesDraftsAndPublished()
+    {
+        await using var context = new SiteDbContext(_options);
+        var repository = new ProductRepository(context);
+        await repository.AddAsync(Product.CreateDraft(Slug.Create("draft-app"), "Draft", "Tools", "A draft."));
+        var live = Product.CreateDraft(Slug.Create("live-app"), "Live", "Tools", "Published.");
+        live.MakeQuoteBased();
+        live.Publish();
+        await repository.AddAsync(live);
+
+        var all = await repository.ListAllAsync();
+
+        Assert.Equal(2, all.Count);
+        Assert.Contains(all, p => p.Slug.Value == "draft-app" && p.Status == ProductStatus.Draft);
+        Assert.Contains(all, p => p.Slug.Value == "live-app" && p.Status == ProductStatus.Published);
+    }
+
+    [Fact]
+    public async Task SlugExists_ExcludingProduct_IgnoresThatProduct()
+    {
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
+        await using var context = new SiteDbContext(_options);
+        var repository = new ProductRepository(context);
+        await repository.AddAsync(product);
+
+        Assert.True(await repository.SlugExistsAsync(Slug.Create("workflows")));
+        Assert.False(await repository.SlugExistsAsync(Slug.Create("workflows"), product.Id));
     }
 
     public void Dispose() => _connection.Dispose();

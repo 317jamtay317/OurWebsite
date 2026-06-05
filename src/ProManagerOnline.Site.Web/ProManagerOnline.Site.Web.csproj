@@ -1,23 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>2d2ec44f-2250-4c23-909c-9545271fee77</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ProManagerOnline.Site.Application\ProManagerOnline.Site.Application.csproj" />
+    <ProjectReference Include="..\ProManagerOnline.Site.Contracts\ProManagerOnline.Site.Contracts.csproj" />
     <ProjectReference Include="..\ProManagerOnline.Site.Infrastructure\ProManagerOnline.Site.Infrastructure.csproj" />
+    <ProjectReference Include="..\ProManagerOnline.Site.Web.Client\ProManagerOnline.Site.Web.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>2d2ec44f-2250-4c23-909c-9545271fee77</UserSecretsId>
-  </PropertyGroup>
 
 </Project>

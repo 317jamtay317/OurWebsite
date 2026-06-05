@@ -40,4 +40,33 @@ public class CreateProductHandlerTests
 
         await Assert.ThrowsAsync<ConflictException>(() => handler.Handle(command, CancellationToken.None));
     }
+
+    [Fact]
+    public async Task Handle_WithFixedPricing_CreatesFixedPriceProduct()
+    {
+        var products = new InMemoryProductRepository();
+        var handler = new CreateProductHandler(products);
+        var command = new CreateProductCommand(
+            "audit", "Compliance Audit", "Compliance", "One-off audit.", PricingKind.Fixed, 499m);
+
+        var productId = await handler.Handle(command, CancellationToken.None);
+
+        var saved = await products.GetByIdAsync(productId);
+        Assert.Equal(PricingKind.Fixed, saved!.PricingKind);
+        Assert.Equal(499m, saved.FixedPrice!.Amount);
+    }
+
+    [Fact]
+    public async Task Handle_WithQuotePricing_CreatesQuoteBasedProduct()
+    {
+        var products = new InMemoryProductRepository();
+        var handler = new CreateProductHandler(products);
+        var command = new CreateProductCommand(
+            "air-compliance", "Air Compliance", "Environmental", "Per-facility.", PricingKind.Quote);
+
+        var productId = await handler.Handle(command, CancellationToken.None);
+
+        var saved = await products.GetByIdAsync(productId);
+        Assert.Equal(PricingKind.Quote, saved!.PricingKind);
+    }
 }

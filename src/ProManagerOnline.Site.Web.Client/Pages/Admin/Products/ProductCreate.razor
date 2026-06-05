@@ -1,0 +1,133 @@
+@page "/admin/products/create"
+@rendermode InteractiveAuto
+@inject IProductAdminApi Api
+@inject NavigationManager Nav
+
+<PageTitle>New product — ProManager Online</PageTitle>
+
+<section class="container-site max-w-2xl py-10">
+    <a class="text-sm font-medium text-brand hover:underline" href="/admin/products">&larr; Back to products</a>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900">New product</h1>
+    <p class="mt-1 text-slate-600">Create a draft. You can add subscription tiers and publish it next.</p>
+
+    <EditForm Model="_input" OnValidSubmit="SubmitAsync" class="card mt-8 flex flex-col gap-5">
+        <DataAnnotationsValidator />
+
+        @if (_error is not null)
+        {
+            <div class="field-error">@_error</div>
+        }
+
+        <div>
+            <label class="label" for="name">Name</label>
+            <InputText id="name" class="input mt-1" @bind-Value="_input.Name" placeholder="Workflows.AI" />
+            <ValidationMessage For="() => _input.Name" class="field-error" />
+        </div>
+
+        <div>
+            <label class="label" for="slug">Slug</label>
+            <InputText id="slug" class="input mt-1 font-mono" @bind-Value="_input.Slug" placeholder="workflows" />
+            <p class="mt-1 text-xs text-slate-500">Used in the product's web address, e.g. /workflows.</p>
+            <ValidationMessage For="() => _input.Slug" class="field-error" />
+        </div>
+
+        <div>
+            <label class="label" for="category">Category</label>
+            <InputText id="category" class="input mt-1" @bind-Value="_input.Category" placeholder="Business management" />
+            <ValidationMessage For="() => _input.Category" class="field-error" />
+        </div>
+
+        <div>
+            <label class="label" for="summary">Summary / description</label>
+            <InputTextArea id="summary" class="input mt-1" rows="3" @bind-Value="_input.Summary" placeholder="A one-line summary shown on listings." />
+            <ValidationMessage For="() => _input.Summary" class="field-error" />
+        </div>
+
+        <fieldset>
+            <legend class="label">Pricing</legend>
+            <InputRadioGroup @bind-Value="_input.PricingKind">
+                <div class="mt-2 flex flex-col gap-2">
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                        <InputRadio Value="PricingKind.Tiered" />
+                        <span><span class="font-semibold text-slate-900">Subscription</span> &mdash; one or more tiers (Basic, Pro, Enterprise)</span>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                        <InputRadio Value="PricingKind.Fixed" />
+                        <span><span class="font-semibold text-slate-900">Fixed price</span> &mdash; a single one-time amount</span>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                        <InputRadio Value="PricingKind.Quote" />
+                        <span><span class="font-semibold text-slate-900">Quote-based</span> &mdash; customers request a quote</span>
+                    </label>
+                </div>
+            </InputRadioGroup>
+        </fieldset>
+
+        @if (_input.PricingKind == PricingKind.Fixed)
+        {
+            <div>
+                <label class="label" for="fixed">One-time price (USD)</label>
+                <InputNumber id="fixed" class="input mt-1" @bind-Value="_input.FixedPriceAmount" placeholder="499.00" />
+            </div>
+        }
+
+        <div class="flex gap-3">
+            <button type="submit" class="btn-primary" disabled="@_busy">Create product</button>
+            <a class="btn-secondary" href="/admin/products">Cancel</a>
+        </div>
+    </EditForm>
+</section>
+
+@code {
+    private readonly InputModel _input = new();
+    private string? _error;
+    private bool _busy;
+
+    private async Task SubmitAsync()
+    {
+        if (_input.PricingKind == PricingKind.Fixed && _input.FixedPriceAmount is null)
+        {
+            _error = "Enter the one-time price for a fixed-price product.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var request = new CreateProductRequest(
+                _input.Slug!, _input.Name!, _input.Category!, _input.Summary!, _input.PricingKind,
+                _input.PricingKind == PricingKind.Fixed ? _input.FixedPriceAmount : null);
+            var id = await Api.CreateAsync(request);
+            Nav.NavigateTo($"/admin/products/edit/{id}");
+        }
+        catch (ProductAdminException exception)
+        {
+            _error = exception.Message;
+            _busy = false;
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        public string? Name { get; set; }
+
+        [Required]
+        [RegularExpression(
+            "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            ErrorMessage = "Use lowercase letters, digits and single hyphens, e.g. 'air-compliance'.")]
+        public string? Slug { get; set; }
+
+        [Required]
+        public string? Category { get; set; }
+
+        [Required]
+        public string? Summary { get; set; }
+
+        public PricingKind PricingKind { get; set; } = PricingKind.Tiered;
+
+        [Range(0, 1_000_000, ErrorMessage = "Enter a price of 0 or more.")]
+        public decimal? FixedPriceAmount { get; set; }
+    }
+}

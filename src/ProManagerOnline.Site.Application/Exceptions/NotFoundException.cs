@@ -1,8 +1,8 @@
 namespace ProManagerOnline.Site.Application.Exceptions;
 
 /// <summary>
-/// Thrown by an application use case when a requested entity does not exist — for example,
-/// publishing a product whose id is not in the catalogue. Maps naturally to an HTTP 404
+/// Thrown by an application use case when the entity a request targets does not exist —
+/// for example, editing a product that has been deleted. Maps naturally to an HTTP 404
 /// response in the web layer.
 /// </summary>
 public sealed class NotFoundException : Exception

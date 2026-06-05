@@ -1,12 +1,16 @@
-# Keep the Docker build context small. Only public/ and default.conf are
-# copied into the image; everything below is irrelevant to the build.
+# Keep the build context small and reproducible.
+**/bin/
+**/obj/
+**/node_modules/
 .git
 .gitignore
-*.md
-Dockerfile
-docker-compose.yml
-.dockerignore
-node_modules
-npm-debug.log
-.DS_Store
-Thumbs.db
+.gitattributes
+.claude/
+.vs/
+.vscode/
+*.user
+**/.DS_Store
+
+# Old static-site assets (replaced by the .NET app).
+public/
+default.conf

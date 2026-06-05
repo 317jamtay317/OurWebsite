@@ -29,6 +29,14 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(product => product.PricingKind).HasConversion<string>().HasMaxLength(20).IsRequired();
 
+        // Optional one-time price, present only for fixed-price products.
+        builder.OwnsOne(product => product.FixedPrice, price =>
+        {
+            price.Property(money => money.Amount).HasColumnName("FixedPriceAmount").HasPrecision(18, 2);
+            price.Property(money => money.Currency).HasColumnName("FixedPriceCurrency").HasConversion<string>().HasMaxLength(3);
+        });
+        builder.Navigation(product => product.FixedPrice).IsRequired(false);
+
         builder.OwnsMany(product => product.Plans, plan =>
         {
             plan.ToTable("ProductPlans");
@@ -48,6 +56,20 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
                 price.Property(money => money.Currency).HasColumnName("PriceCurrency").HasConversion<string>().HasMaxLength(3);
             });
             plan.Navigation(p => p.Price).IsRequired();
+
+            // Feature lines, ordered by Position, stored in a child table. The public Plan.Features
+            // read model projects from the mapped _features backing field, so it is ignored here.
+            plan.Ignore(p => p.Features);
+            plan.OwnsMany<PlanFeature>("_features", feature =>
+            {
+                feature.ToTable("ProductPlanFeatures");
+                feature.WithOwner().HasForeignKey("PlanId");
+                feature.Property<int>("Id");
+                feature.HasKey("Id");
+                feature.Property(f => f.Position);
+                feature.Property(f => f.Text).HasMaxLength(200).IsRequired();
+            });
+            plan.Navigation("_features").UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         builder.Navigation(product => product.Plans)

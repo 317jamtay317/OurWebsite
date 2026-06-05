@@ -14,8 +14,9 @@ internal sealed class InMemoryProductRepository : IProductRepository
     public Task<Product?> GetByIdAsync(ProductId id, CancellationToken cancellationToken = default)
         => Task.FromResult(_products.GetValueOrDefault(id));
 
-    public Task<bool> SlugExistsAsync(Slug slug, CancellationToken cancellationToken = default)
-        => Task.FromResult(_products.Values.Any(product => product.Slug == slug));
+    public Task<bool> SlugExistsAsync(Slug slug, ProductId? excludeId = null, CancellationToken cancellationToken = default)
+        => Task.FromResult(_products.Values.Any(product =>
+            product.Slug == slug && (excludeId is null || product.Id != excludeId.Value)));
 
     public Task<IReadOnlyList<Product>> ListPublishedAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<Product>>(
@@ -33,6 +34,12 @@ internal sealed class InMemoryProductRepository : IProductRepository
     public Task UpdateAsync(Product product, CancellationToken cancellationToken = default)
     {
         _products[product.Id] = product;
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveAsync(Product product, CancellationToken cancellationToken = default)
+    {
+        _products.Remove(product.Id);
         return Task.CompletedTask;
     }
 }

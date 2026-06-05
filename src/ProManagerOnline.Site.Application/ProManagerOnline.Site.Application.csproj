@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ProManagerOnline.Site.Domain\ProManagerOnline.Site.Domain.csproj" />
+    <ProjectReference Include="..\ProManagerOnline.Site.Contracts\ProManagerOnline.Site.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
