@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ProManagerOnline.Site.Application.Administration;
+using ProManagerOnline.Site.Application.Email;
 using ProManagerOnline.Site.Domain.Products;
+using ProManagerOnline.Site.Infrastructure.Email;
+using ProManagerOnline.Site.Infrastructure.Identity;
 using ProManagerOnline.Site.Infrastructure.Persistence;
 
 namespace ProManagerOnline.Site.Infrastructure;
@@ -9,7 +13,9 @@ namespace ProManagerOnline.Site.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers the database context (SQL Server) and the repository implementations.
+    /// Registers the database context (SQL Server), the repository implementations, and the
+    /// admin account and email services. ASP.NET Core Identity itself is registered by the
+    /// web layer, which owns the cookie/sign-in concerns.
     /// </summary>
     /// <param name="services">The service collection to add to.</param>
     /// <param name="connectionString">The SQL Server connection string.</param>
@@ -18,6 +24,8 @@ public static class DependencyInjection
     {
         services.AddDbContext<SiteDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IAdminAccountService, AdminAccountService>();
+        services.AddScoped<IEmailSender, LoggingEmailSender>();
 
         return services;
     }

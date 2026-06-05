@@ -1,13 +1,16 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
+using ProManagerOnline.Site.Infrastructure.Identity;
 
 namespace ProManagerOnline.Site.Infrastructure.Persistence;
 
 /// <summary>
-/// EF Core database context for the site's product catalogue and documentation.
+/// EF Core database context for the site's product catalogue and documentation, and for
+/// the ASP.NET Core Identity admin accounts (the <c>AspNet*</c> tables).
 /// </summary>
-public sealed class SiteDbContext : DbContext
+public sealed class SiteDbContext : IdentityDbContext<ApplicationUser>
 {
     /// <summary>Initialises the context with the given options.</summary>
     /// <param name="options">The context options (database provider, connection and so on).</param>
@@ -24,5 +27,9 @@ public sealed class SiteDbContext : DbContext
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(SiteDbContext).Assembly);
+    {
+        // Configure the Identity schema first, then the catalogue/documentation mappings.
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(SiteDbContext).Assembly);
+    }
 }

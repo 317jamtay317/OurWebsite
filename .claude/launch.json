@@ -6,6 +6,12 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/ProManagerOnline.Site.Web", "--launch-profile", "http"],
       "port": 5070
+    },
+    {
+      "name": "pmo-admin",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/ProManagerOnline.Site.Web", "--launch-profile", "http", "--urls", "http://localhost:5090"],
+      "port": 5090
     }
   ]
 }

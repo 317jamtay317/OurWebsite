@@ -1,0 +1,35 @@
+@page "/admin"
+@attribute [Authorize]
+
+<PageTitle>Dashboard — ProManager Online Admin</PageTitle>
+
+<div class="container-site py-10">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Admin dashboard</h1>
+        <AuthorizeView>
+            <p class="mt-1 text-slate-600">
+                Signed in as <span class="font-medium text-slate-900">@context.User.Identity?.Name</span>.
+            </p>
+        </AuthorizeView>
+    </div>
+
+    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <article class="card flex flex-col">
+            <h2 class="text-lg font-bold text-slate-900">Products</h2>
+            <p class="mt-2 flex-1 text-sm text-slate-600">Manage the catalogue, plans and pricing.</p>
+            <a class="btn-secondary mt-4 self-start" href="/admin/products">Manage products</a>
+        </article>
+
+        <article class="card">
+            <h2 class="text-lg font-bold text-slate-900">Documentation</h2>
+            <p class="mt-2 text-sm text-slate-600">Write and publish per-product help articles.</p>
+            <span class="badge mt-4">Coming soon</span>
+        </article>
+
+        <article class="card flex flex-col">
+            <h2 class="text-lg font-bold text-slate-900">Your account</h2>
+            <p class="mt-2 flex-1 text-sm text-slate-600">Change the password for your admin sign-in.</p>
+            <a class="btn-secondary mt-4 self-start" href="/Admin/ChangePassword">Change password</a>
+        </article>
+    </div>
+</div>

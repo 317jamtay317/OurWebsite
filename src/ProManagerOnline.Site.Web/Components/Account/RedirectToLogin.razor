@@ -1,0 +1,13 @@
+@*
+    Sends an unauthenticated visitor to the Razor Pages sign-in, preserving where they were
+    headed. forceLoad leaves the Blazor circuit so the cookie sign-in flow runs normally.
+*@
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+        Navigation.NavigateTo($"/Admin/Account/Login?returnUrl={returnUrl}", forceLoad: true);
+    }
+}
