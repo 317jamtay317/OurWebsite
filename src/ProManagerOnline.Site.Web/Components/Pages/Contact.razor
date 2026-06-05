@@ -48,24 +48,24 @@
                 <div class="grid gap-5 sm:grid-cols-2">
                     <label class="block">
                         <span class="text-sm font-medium text-slate-700">Name</span>
-                        <InputText @bind-Value="Model.Name" autocomplete="name" class="@FieldClass" />
-                        <ValidationMessage For="() => Model.Name" class="mt-1 block text-sm text-red-600" />
+                        <InputText @bind-Value="Model!.Name" autocomplete="name" class="@FieldClass" />
+                        <ValidationMessage For="() => Model!.Name" class="mt-1 block text-sm text-red-600" />
                     </label>
                     <label class="block">
                         <span class="text-sm font-medium text-slate-700">Email</span>
-                        <InputText @bind-Value="Model.Email" type="email" autocomplete="email" class="@FieldClass" />
-                        <ValidationMessage For="() => Model.Email" class="mt-1 block text-sm text-red-600" />
+                        <InputText @bind-Value="Model!.Email" type="email" autocomplete="email" class="@FieldClass" />
+                        <ValidationMessage For="() => Model!.Email" class="mt-1 block text-sm text-red-600" />
                     </label>
                 </div>
 
                 <div class="mt-5 grid gap-5 sm:grid-cols-2">
                     <label class="block">
                         <span class="text-sm font-medium text-slate-700">Company <span class="text-slate-400">(optional)</span></span>
-                        <InputText @bind-Value="Model.Company" autocomplete="organization" class="@FieldClass" />
+                        <InputText @bind-Value="Model!.Company" autocomplete="organization" class="@FieldClass" />
                     </label>
                     <label class="block">
                         <span class="text-sm font-medium text-slate-700">Product of interest</span>
-                        <InputSelect @bind-Value="Model.ProductOfInterest" class="@FieldClass">
+                        <InputSelect @bind-Value="Model!.ProductOfInterest" class="@FieldClass">
                             <option value="">General enquiry</option>
                             @foreach (var product in _products)
                             {
@@ -77,8 +77,8 @@
 
                 <label class="mt-5 block">
                     <span class="text-sm font-medium text-slate-700">How can we help?</span>
-                    <InputTextArea @bind-Value="Model.Message" rows="5" class="@FieldClass" />
-                    <ValidationMessage For="() => Model.Message" class="mt-1 block text-sm text-red-600" />
+                    <InputTextArea @bind-Value="Model!.Message" rows="5" class="@FieldClass" />
+                    <ValidationMessage For="() => Model!.Message" class="mt-1 block text-sm text-red-600" />
                 </label>
 
                 @if (!string.IsNullOrWhiteSpace(_recaptchaSiteKey))
@@ -109,7 +109,7 @@
     private const string DefaultRecipient = "james@jaila-files.com";
 
     [SupplyParameterFromForm]
-    private ContactFormModel Model { get; set; } = new();
+    private ContactFormModel? Model { get; set; }
 
     [SupplyParameterFromQuery(Name = "product")]
     private string? ProductSlug { get; set; }
@@ -127,13 +127,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Model ??= new();
         _products = await ListPublishedPricing.Handle();
         _recaptchaSiteKey = Configuration["Recaptcha:SiteKey"];
 
         // Preselect the product (and seed the message from the chosen plan) on the initial GET only;
         // on a POST the model is bound from the submitted form and must not be overwritten.
-        var isPost = string.Equals(HttpContext?.Request.Method, HttpMethods.Post, StringComparison.OrdinalIgnoreCase);
-        if (isPost)
+        if (string.Equals(HttpContext?.Request.Method, HttpMethods.Post, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -153,12 +153,13 @@
 
     private async Task HandleValidSubmitAsync()
     {
+        var model = Model!;
         var captchaResponse = HttpContext?.Request.Form["g-recaptcha-response"].ToString();
         var remoteIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
         var recipient = Configuration["ContactForm:Recipient"] ?? DefaultRecipient;
 
         var command = new SubmitContactInquiryCommand(
-            Model.Name, Model.Email, Model.Company, Model.ProductOfInterest, Model.Message, captchaResponse, remoteIp);
+            model.Name, model.Email, model.Company, model.ProductOfInterest, model.Message, captchaResponse, remoteIp);
 
         var outcome = await SubmitContactInquiry.Handle(command, recipient);
 
