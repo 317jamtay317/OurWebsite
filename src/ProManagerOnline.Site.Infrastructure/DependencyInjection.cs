@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
 using ProManagerOnline.Site.Infrastructure.Persistence;
 
@@ -18,6 +19,7 @@ public static class DependencyInjection
     {
         services.AddDbContext<SiteDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IDocArticleRepository, DocArticleRepository>();
 
         return services;
     }

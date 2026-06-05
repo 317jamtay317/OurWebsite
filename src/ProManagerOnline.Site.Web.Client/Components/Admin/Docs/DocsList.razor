@@ -1,0 +1,120 @@
+@page "/admin/docs"
+@rendermode InteractiveAuto
+@inject IDocsAdminApi Api
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Documentation</h1>
+<p class="mt-2 text-slate-600">Create, edit and publish help articles for your products.</p>
+
+@if (_error is not null)
+{
+    <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">@_error</div>
+}
+
+@if (_products is null)
+{
+    <p class="mt-8 text-slate-500">Loading…</p>
+}
+else if (_products.Count == 0)
+{
+    <div class="mt-8 card">
+        <p class="text-slate-600">No published products yet. Publish a product before adding its documentation.</p>
+    </div>
+}
+else
+{
+    <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <label class="block text-sm font-medium text-slate-700" for="product">Product</label>
+            <select id="product" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm sm:w-72"
+                    @bind="_selectedProductId" @bind:after="ReloadArticlesAsync">
+                @foreach (var product in _products)
+                {
+                    <option value="@product.Id">@product.Name</option>
+                }
+            </select>
+        </div>
+        <a class="btn-primary" href="@NewArticleHref">+ New article</a>
+    </div>
+
+    @if (_articles is null)
+    {
+        <p class="mt-8 text-slate-500">Loading articles…</p>
+    }
+    else if (_articles.Count == 0)
+    {
+        <div class="mt-6 card">
+            <p class="text-slate-600">
+                This product has no articles yet. Use <strong>New article</strong> to write the first one.
+            </p>
+        </div>
+    }
+    else
+    {
+        <ul class="mt-6 space-y-3">
+            @foreach (var article in _articles)
+            {
+                <li class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-semibold text-slate-900">@article.Title</span>
+                            @if (article.Published)
+                            {
+                                <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Published</span>
+                            }
+                            else
+                            {
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">Draft</span>
+                            }
+                        </div>
+                        <p class="mt-1 text-sm text-slate-500">
+                            @article.Section · position @article.Position · <code class="text-slate-400">@article.Slug</code>
+                        </p>
+                    </div>
+                    <a class="btn-secondary shrink-0" href="@EditHref(article.Id)">Edit</a>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private IReadOnlyList<ProductOption>? _products;
+    private IReadOnlyList<DocArticleRow>? _articles;
+    private Guid _selectedProductId;
+    private string? _error;
+
+    private string NewArticleHref => $"/admin/docs/new?productId={_selectedProductId}";
+
+    private static string EditHref(Guid id) => $"/admin/docs/{id}/edit";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _products = await Api.GetPublishedProductsAsync();
+            if (_products.Count > 0)
+            {
+                _selectedProductId = _products[0].Id;
+                await ReloadArticlesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ReloadArticlesAsync()
+    {
+        _error = null;
+        _articles = null;
+        try
+        {
+            _articles = await Api.GetArticlesAsync(_selectedProductId);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

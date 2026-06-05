@@ -1,0 +1,30 @@
+@model ArticleModel
+
+<nav class="rounded-card border border-slate-200 bg-slate-50/60 p-4 text-sm" aria-label="Documentation sections">
+    <a href="/docs/@Model.Navigation.ProductId" class="block font-bold text-slate-900 hover:text-brand">
+        @Model.Navigation.ProductName
+    </a>
+    <div class="mt-4 space-y-5">
+        @foreach (var docSection in Model.Navigation.Sections)
+        {
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">@docSection.Section</p>
+                <ul class="mt-2 space-y-0.5">
+                    @foreach (var article in docSection.Articles)
+                    {
+                        var isCurrent = Model.Article is not null && Model.Article.Slug == article.Slug;
+                        <li>
+                            <a href="/docs/@Model.Navigation.ProductId/@article.Slug"
+                               aria-current="@(isCurrent ? "page" : null)"
+                               class="@(isCurrent
+                                   ? "block rounded-md bg-brand-light px-3 py-2 font-semibold text-brand-darker"
+                                   : "block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100 hover:text-brand")">
+                                @article.Title
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</nav>

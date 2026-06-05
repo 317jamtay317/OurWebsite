@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* The Blazor authoring admin lives in the sibling Web.Client project, outside this project's
+   directory, so register it as an extra content source — otherwise the utility classes used only
+   by the admin components would be missing from the generated stylesheet. */
+@source "../../ProManagerOnline.Site.Web.Client";
+
 /* Brand design tokens, ported from the original site's CSS custom properties.
    The palette is Tailwind's own indigo / cyan / slate, so most utilities work as-is. */
 @theme {
@@ -38,5 +43,60 @@
   }
   .card {
     @apply rounded-card border border-slate-200 bg-white p-6 shadow-card;
+  }
+}
+
+/* Typography for rendered Markdown documentation bodies (the .doc-content container). */
+@layer components {
+  .doc-content {
+    @apply max-w-3xl text-base leading-7 text-slate-700;
+  }
+  .doc-content h1 {
+    @apply mt-0 mb-4 text-3xl font-bold tracking-tight text-slate-900;
+  }
+  .doc-content h2 {
+    @apply mt-10 mb-3 text-2xl font-bold tracking-tight text-slate-900;
+  }
+  .doc-content h3 {
+    @apply mt-8 mb-2 text-xl font-semibold text-slate-900;
+  }
+  .doc-content p {
+    @apply my-4;
+  }
+  .doc-content a {
+    @apply font-medium text-brand hover:underline;
+  }
+  .doc-content ul {
+    @apply my-4 list-disc space-y-2 pl-6;
+  }
+  .doc-content ol {
+    @apply my-4 list-decimal space-y-2 pl-6;
+  }
+  .doc-content li {
+    @apply pl-1;
+  }
+  .doc-content strong {
+    @apply font-semibold text-slate-900;
+  }
+  .doc-content blockquote {
+    @apply my-5 rounded-r-md border-l-4 border-brand/40 bg-brand-light/40 py-2 pl-4 pr-3 text-slate-600 italic;
+  }
+  .doc-content code {
+    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.875em] text-slate-800;
+  }
+  .doc-content pre {
+    @apply my-5 overflow-x-auto rounded-lg bg-slate-900 p-4 text-sm text-slate-100;
+  }
+  .doc-content pre code {
+    @apply bg-transparent p-0 text-slate-100;
+  }
+  .doc-content table {
+    @apply my-5 w-full border-collapse text-left text-sm;
+  }
+  .doc-content th {
+    @apply border-b border-slate-300 px-3 py-2 font-semibold text-slate-900;
+  }
+  .doc-content td {
+    @apply border-b border-slate-200 px-3 py-2;
   }
 }

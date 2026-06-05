@@ -1,0 +1,22 @@
+@inherits LayoutComponentBase
+
+<div class="flex min-h-screen flex-col">
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div class="container-site flex h-[68px] items-center justify-between">
+            <a href="/admin/docs" class="flex items-center gap-2 text-lg font-bold text-slate-900" aria-label="Documentation admin">
+                <svg class="h-8 w-8" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                    <rect width="64" height="64" rx="14" fill="#4f46e5" />
+                    <path d="M20 44V20h11a8 8 0 0 1 0 16h-5v8z" fill="#fff" />
+                    <circle cx="44" cy="22" r="4" fill="#06b6d4" />
+                </svg>
+                <span>ProManager<span class="text-brand">Online</span></span>
+                <span class="ml-1 rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-semibold text-brand-darker">Docs admin</span>
+            </a>
+            <a href="/" class="text-sm font-medium text-slate-600 hover:text-brand">View site →</a>
+        </div>
+    </header>
+
+    <main class="container-site flex-1 py-8">
+        @Body
+    </main>
+</div>

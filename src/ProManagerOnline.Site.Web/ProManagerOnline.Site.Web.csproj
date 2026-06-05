@@ -3,9 +3,12 @@
   <ItemGroup>
     <ProjectReference Include="..\ProManagerOnline.Site.Application\ProManagerOnline.Site.Application.csproj" />
     <ProjectReference Include="..\ProManagerOnline.Site.Infrastructure\ProManagerOnline.Site.Infrastructure.csproj" />
+    <ProjectReference Include="..\ProManagerOnline.Site.Web.Client\ProManagerOnline.Site.Web.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Markdig" Version="1.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
