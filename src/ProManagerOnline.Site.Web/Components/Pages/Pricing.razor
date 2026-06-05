@@ -1,0 +1,118 @@
+@page "/pricing"
+@using ProManagerOnline.Site.Application.Pricing
+@inject ListPublishedPricingHandler ListPublishedPricing
+
+<PageTitle>Pricing — ProManager Online</PageTitle>
+
+<!-- Hero -->
+<section class="border-b border-slate-200 bg-gradient-to-b from-brand-light/60 to-white">
+    <div class="container-site py-16 text-center">
+        <span class="badge mb-4">Pricing</span>
+        <h1 class="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            Simple, subscription pricing
+        </h1>
+        <p class="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
+            Choose the plan that fits, or ask us for a quote on a custom build. No setup loans and no
+            financing — just a straightforward monthly subscription to software we host and maintain.
+        </p>
+    </div>
+</section>
+
+@if (_products.Count == 0)
+{
+    <section class="container-site py-16 text-center">
+        <p class="text-slate-600">Pricing is being finalised. Please <a class="text-brand-dark hover:underline" href="/contact">get in touch</a> and we'll share current plans.</p>
+    </section>
+}
+
+@foreach (var product in _products)
+{
+    <section class="container-site py-12">
+        <div class="max-w-2xl">
+            <span class="badge mb-3">@product.Category</span>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">@product.Name</h2>
+            <p class="mt-3 text-slate-600">@product.Summary</p>
+        </div>
+
+        @if (product.Plans.Count > 0)
+        {
+            <div class="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                @foreach (var plan in product.Plans)
+                {
+                    <article class="card flex flex-col @(plan.IsFeatured ? "ring-2 ring-brand" : string.Empty)">
+                        @if (plan.IsFeatured)
+                        {
+                            <span class="badge self-start">Most popular</span>
+                        }
+                        <h3 class="mt-2 text-xl font-bold text-slate-900">@plan.Name</h3>
+                        <p class="mt-1 text-sm text-slate-600">@plan.Description</p>
+                        <p class="mt-4 flex items-baseline gap-1">
+                            <span class="text-4xl font-bold text-slate-900">@FormatPrice(plan)</span>
+                            <span class="text-slate-500">/ @PeriodLabel(plan.BillingPeriod)</span>
+                        </p>
+                        <ul class="mt-5 flex-1 space-y-2 text-sm text-slate-600">
+                            @foreach (var feature in plan.Features)
+                            {
+                                <li class="flex gap-2">
+                                    <svg class="mt-0.5 h-4 w-4 flex-none text-brand" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.3 3.3 6.8-6.8a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>@feature</span>
+                                </li>
+                            }
+                        </ul>
+                        <a class="btn-primary mt-6" href="@ChoosePlanLink(product.Slug, plan.Name)">Choose @plan.Name</a>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card mt-8 flex flex-col items-start gap-4 border-brand/20 bg-brand-light/30 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-900">Priced to your needs</h3>
+                    <p class="mt-1 text-slate-600">
+                        @product.Name is quoted per project. Tell us about your setup and we'll send a written quote.
+                    </p>
+                </div>
+                <a class="btn-primary flex-none" href="@RequestQuoteLink(product.Slug)">Request a quote</a>
+            </div>
+        }
+    </section>
+}
+
+<!-- Custom development CTA -->
+<section class="border-t border-slate-200 bg-gradient-to-b from-white to-brand-light/40">
+    <div class="container-site py-16 text-center">
+        <h2 class="text-3xl font-bold tracking-tight text-slate-900">Need something custom?</h2>
+        <p class="mx-auto mt-3 max-w-xl text-slate-600">
+            We also build bespoke software on a clear, milestone-based plan. Tell us about your project
+            and we'll scope it with you.
+        </p>
+        <div class="mt-6">
+            <a class="btn-primary" href="/contact">Start a project</a>
+        </div>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<ProductPricingDto> _products = [];
+
+    protected override async Task OnInitializedAsync()
+        => _products = await ListPublishedPricing.Handle();
+
+    private static string FormatPrice(PricingPlanDto plan)
+    {
+        var symbol = string.Equals(plan.Currency, "Usd", StringComparison.OrdinalIgnoreCase) ? "$" : string.Empty;
+        return $"{symbol}{plan.Amount:0.##}";
+    }
+
+    private static string PeriodLabel(string billingPeriod)
+        => string.Equals(billingPeriod, "Annual", StringComparison.OrdinalIgnoreCase) ? "year" : "month";
+
+    private static string ChoosePlanLink(string slug, string planName)
+        => $"/contact?product={Uri.EscapeDataString(slug)}&plan={Uri.EscapeDataString(planName)}";
+
+    private static string RequestQuoteLink(string slug)
+        => $"/contact?product={Uri.EscapeDataString(slug)}";
+}

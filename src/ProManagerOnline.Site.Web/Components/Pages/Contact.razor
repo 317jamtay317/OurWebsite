@@ -1,0 +1,177 @@
+@page "/contact"
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Configuration
+@using ProManagerOnline.Site.Application.Contact
+@using ProManagerOnline.Site.Application.Pricing
+@inject SubmitContactInquiryHandler SubmitContactInquiry
+@inject ListPublishedPricingHandler ListPublishedPricing
+@inject IConfiguration Configuration
+
+<PageTitle>Contact — ProManager Online</PageTitle>
+
+<!-- Hero -->
+<section class="border-b border-slate-200 bg-gradient-to-b from-brand-light/60 to-white">
+    <div class="container-site py-16 text-center">
+        <span class="badge mb-4">Contact</span>
+        <h1 class="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            Let's talk about your business
+        </h1>
+        <p class="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
+            Tell us what you're trying to do — a subscription plan or a custom build — and we'll get
+            back to you by email.
+        </p>
+    </div>
+</section>
+
+<section class="container-site py-12">
+    <div class="mx-auto max-w-2xl">
+        @if (_submitted)
+        {
+            <div class="card border-brand/20 bg-brand-light/30 text-center">
+                <h2 class="text-2xl font-bold text-slate-900">Thanks — your message is on its way</h2>
+                <p class="mt-2 text-slate-600">We've received your enquiry and will reply by email soon.</p>
+                <a class="btn-secondary mt-6" href="/">Back to home</a>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="Model" FormName="contact" OnValidSubmit="HandleValidSubmitAsync">
+                <DataAnnotationsValidator />
+
+                @if (_spamRejected)
+                {
+                    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        We couldn't verify that you're human. Please tick the "I'm not a robot" box and try again.
+                    </div>
+                }
+
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="text-sm font-medium text-slate-700">Name</span>
+                        <InputText @bind-Value="Model.Name" autocomplete="name" class="@FieldClass" />
+                        <ValidationMessage For="() => Model.Name" class="mt-1 block text-sm text-red-600" />
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-medium text-slate-700">Email</span>
+                        <InputText @bind-Value="Model.Email" type="email" autocomplete="email" class="@FieldClass" />
+                        <ValidationMessage For="() => Model.Email" class="mt-1 block text-sm text-red-600" />
+                    </label>
+                </div>
+
+                <div class="mt-5 grid gap-5 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="text-sm font-medium text-slate-700">Company <span class="text-slate-400">(optional)</span></span>
+                        <InputText @bind-Value="Model.Company" autocomplete="organization" class="@FieldClass" />
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-medium text-slate-700">Product of interest</span>
+                        <InputSelect @bind-Value="Model.ProductOfInterest" class="@FieldClass">
+                            <option value="">General enquiry</option>
+                            @foreach (var product in _products)
+                            {
+                                <option value="@product.Name">@product.Name</option>
+                            }
+                        </InputSelect>
+                    </label>
+                </div>
+
+                <label class="mt-5 block">
+                    <span class="text-sm font-medium text-slate-700">How can we help?</span>
+                    <InputTextArea @bind-Value="Model.Message" rows="5" class="@FieldClass" />
+                    <ValidationMessage For="() => Model.Message" class="mt-1 block text-sm text-red-600" />
+                </label>
+
+                @if (!string.IsNullOrWhiteSpace(_recaptchaSiteKey))
+                {
+                    <div class="g-recaptcha mt-6" data-sitekey="@_recaptchaSiteKey"></div>
+                }
+
+                <button type="submit" class="btn-primary mt-6 w-full sm:w-auto">Send message</button>
+
+                <p class="mt-4 text-xs text-slate-500">
+                    We only use your details to reply to your enquiry. This form is protected by reCAPTCHA.
+                </p>
+            </EditForm>
+        }
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(_recaptchaSiteKey))
+{
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+}
+
+@code {
+    private const string FieldClass =
+        "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 shadow-sm " +
+        "focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
+
+    private const string DefaultRecipient = "james@jaila-files.com";
+
+    [SupplyParameterFromForm]
+    private ContactFormModel Model { get; set; } = new();
+
+    [SupplyParameterFromQuery(Name = "product")]
+    private string? ProductSlug { get; set; }
+
+    [SupplyParameterFromQuery(Name = "plan")]
+    private string? PlanName { get; set; }
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private IReadOnlyList<ProductPricingDto> _products = [];
+    private string? _recaptchaSiteKey;
+    private bool _submitted;
+    private bool _spamRejected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _products = await ListPublishedPricing.Handle();
+        _recaptchaSiteKey = Configuration["Recaptcha:SiteKey"];
+
+        // Preselect the product (and seed the message from the chosen plan) on the initial GET only;
+        // on a POST the model is bound from the submitted form and must not be overwritten.
+        var isPost = string.Equals(HttpContext?.Request.Method, HttpMethods.Post, StringComparison.OrdinalIgnoreCase);
+        if (isPost)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Model.ProductOfInterest))
+        {
+            Model.ProductOfInterest = ResolveProductName(ProductSlug);
+        }
+
+        if (string.IsNullOrEmpty(Model.Message)
+            && !string.IsNullOrWhiteSpace(PlanName)
+            && !string.IsNullOrEmpty(Model.ProductOfInterest))
+        {
+            Model.Message = $"I'd like to get started with the {PlanName} plan of {Model.ProductOfInterest}.";
+        }
+    }
+
+    private async Task HandleValidSubmitAsync()
+    {
+        var captchaResponse = HttpContext?.Request.Form["g-recaptcha-response"].ToString();
+        var remoteIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
+        var recipient = Configuration["ContactForm:Recipient"] ?? DefaultRecipient;
+
+        var command = new SubmitContactInquiryCommand(
+            Model.Name, Model.Email, Model.Company, Model.ProductOfInterest, Model.Message, captchaResponse, remoteIp);
+
+        var outcome = await SubmitContactInquiry.Handle(command, recipient);
+
+        if (outcome == ContactSubmissionOutcome.Delivered)
+        {
+            _submitted = true;
+        }
+        else
+        {
+            _spamRejected = true;
+        }
+    }
+
+    private string? ResolveProductName(string? slug)
+        => _products.FirstOrDefault(product => string.Equals(product.Slug, slug, StringComparison.OrdinalIgnoreCase))?.Name;
+}
