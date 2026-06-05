@@ -30,7 +30,7 @@ builder.Services.AddRazorPages(options =>
 });
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Server-side implementation of the product admin API, used when Interactive Auto components
 // render on the server and by the JSON endpoints the WebAssembly client calls.
