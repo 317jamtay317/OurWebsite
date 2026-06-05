@@ -238,5 +238,40 @@ public sealed class ProductRepositoryTests : IDisposable
         Assert.False(await repository.SlugExistsAsync(Slug.Create("workflows"), product.Id));
     }
 
+    [Fact]
+    public async Task GetBySlug_ReturnsTheProductWithItsPlans_WhenSlugExists()
+    {
+        var product = Product.CreateDraft(
+            Slug.Create("workflows"), "Workflows.AI", "Business management", "All-in-one platform.");
+        product.AddPlan(
+            "Team", "For small crews.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly, ["Up to 5 users"]);
+        product.Publish();
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var loaded = await new ProductRepository(context).GetBySlugAsync(Slug.Create("workflows"));
+
+            Assert.NotNull(loaded);
+            Assert.Equal(product.Id, loaded!.Id);
+            Assert.Equal("Workflows.AI", loaded.Name);
+            Assert.Equal("Team", Assert.Single(loaded.Plans).Name);
+        }
+    }
+
+    [Fact]
+    public async Task GetBySlug_ReturnsNull_WhenNoProductHasTheSlug()
+    {
+        await using var context = new SiteDbContext(_options);
+        await new ProductRepository(context).AddAsync(
+            Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary."));
+
+        Assert.Null(await new ProductRepository(context).GetBySlugAsync(Slug.Create("air-compliance")));
+    }
+
     public void Dispose() => _connection.Dispose();
 }

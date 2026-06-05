@@ -13,6 +13,10 @@ public sealed class ProductRepository(SiteDbContext context) : IProductRepositor
         => await context.Products.FirstOrDefaultAsync(product => product.Id == id, cancellationToken);
 
     /// <inheritdoc />
+    public async Task<Product?> GetBySlugAsync(Slug slug, CancellationToken cancellationToken = default)
+        => await context.Products.FirstOrDefaultAsync(product => product.Slug == slug, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<bool> SlugExistsAsync(Slug slug, ProductId? excludeId = null, CancellationToken cancellationToken = default)
     {
         var query = context.Products.Where(product => product.Slug == slug);

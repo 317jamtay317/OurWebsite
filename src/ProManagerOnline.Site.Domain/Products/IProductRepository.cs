@@ -14,6 +14,12 @@ public interface IProductRepository
     /// <returns>The product, or <see langword="null"/> if no product has that id.</returns>
     Task<Product?> GetByIdAsync(ProductId id, CancellationToken cancellationToken = default);
 
+    /// <summary>Finds a product by its URL-safe slug.</summary>
+    /// <param name="slug">The product slug.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The product, or <see langword="null"/> if no product has that slug.</returns>
+    Task<Product?> GetBySlugAsync(Slug slug, CancellationToken cancellationToken = default);
+
     /// <summary>Determines whether any product already uses the given slug.</summary>
     /// <param name="slug">The slug to check.</param>
     /// <param name="excludeId">A product to ignore in the check, used when editing that product's own slug.</param>

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using ProManagerOnline.Site.Domain.Exceptions;
 
@@ -47,6 +48,28 @@ public sealed partial record Slug
         }
 
         return new Slug(value);
+    }
+
+    /// <summary>
+    /// Attempts to create a <see cref="Slug"/> from the given text without throwing, for parsing
+    /// untrusted input such as a URL segment.
+    /// </summary>
+    /// <param name="value">The candidate slug, for example <c>air-compliance</c>.</param>
+    /// <param name="slug">
+    /// When this method returns, the created slug if <paramref name="value"/> is a valid slug;
+    /// otherwise <see langword="null"/>.
+    /// </param>
+    /// <returns><see langword="true"/> if a valid slug was created; otherwise <see langword="false"/>.</returns>
+    public static bool TryCreate(string? value, [NotNullWhen(true)] out Slug? slug)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > MaxLength || !SlugPattern().IsMatch(value))
+        {
+            slug = null;
+            return false;
+        }
+
+        slug = new Slug(value);
+        return true;
     }
 
     /// <summary>Returns the slug text.</summary>
