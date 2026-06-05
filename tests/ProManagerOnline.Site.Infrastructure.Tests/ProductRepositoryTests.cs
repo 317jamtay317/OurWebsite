@@ -160,6 +160,34 @@ public sealed class ProductRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_PersistsAStatusChange_AndLeavesPlansIntact()
+    {
+        var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Tools", "Summary.");
+        product.AddPlan("Team", "For crews.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            await new ProductRepository(context).AddAsync(product);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var repository = new ProductRepository(context);
+            var loaded = await repository.GetByIdAsync(product.Id);
+            loaded!.Publish();
+            await repository.UpdateAsync(loaded);
+        }
+
+        await using (var context = new SiteDbContext(_options))
+        {
+            var reloaded = await new ProductRepository(context).GetByIdAsync(product.Id);
+            Assert.Equal(ProductStatus.Published, reloaded!.Status);
+            Assert.Single(reloaded.Plans);
+            Assert.Equal("Team", reloaded.Plans.Single().Name);
+        }
+    }
+
+    [Fact]
     public async Task Remove_DeletesTheProduct()
     {
         var product = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
@@ -183,20 +211,19 @@ public sealed class ProductRepositoryTests : IDisposable
     [Fact]
     public async Task ListAll_IncludesDraftsAndPublished()
     {
-        await using (var context = new SiteDbContext(_options))
-        {
-            var repository = new ProductRepository(context);
-            var published = Product.CreateDraft(Slug.Create("workflows"), "Workflows.AI", "Business", "Summary.");
-            published.AddPlan("Team", "", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
-            published.Publish();
-            await repository.AddAsync(published);
-            await repository.AddAsync(Product.CreateDraft(Slug.Create("draft"), "Draft", "Cat", "Summary."));
-        }
+        await using var context = new SiteDbContext(_options);
+        var repository = new ProductRepository(context);
+        await repository.AddAsync(Product.CreateDraft(Slug.Create("draft-app"), "Draft", "Tools", "A draft."));
+        var live = Product.CreateDraft(Slug.Create("live-app"), "Live", "Tools", "Published.");
+        live.MakeQuoteBased();
+        live.Publish();
+        await repository.AddAsync(live);
 
-        await using (var context = new SiteDbContext(_options))
-        {
-            Assert.Equal(2, (await new ProductRepository(context).ListAllAsync()).Count);
-        }
+        var all = await repository.ListAllAsync();
+
+        Assert.Equal(2, all.Count);
+        Assert.Contains(all, p => p.Slug.Value == "draft-app" && p.Status == ProductStatus.Draft);
+        Assert.Contains(all, p => p.Slug.Value == "live-app" && p.Status == ProductStatus.Published);
     }
 
     [Fact]

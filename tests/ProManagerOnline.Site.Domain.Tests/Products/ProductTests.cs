@@ -107,6 +107,28 @@ public class ProductTests
     }
 
     [Fact]
+    public void Unpublish_ReturnsAPublishedProductToDraft()
+    {
+        var product = NewDraft();
+        product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
+        product.Publish();
+
+        product.Unpublish();
+
+        Assert.Equal(ProductStatus.Draft, product.Status);
+    }
+
+    [Fact]
+    public void Unpublish_OnADraftProduct_LeavesItDraft()
+    {
+        var product = NewDraft();
+
+        product.Unpublish();
+
+        Assert.Equal(ProductStatus.Draft, product.Status);
+    }
+
+    [Fact]
     public void MakeQuoteBased_SwitchesKindAndAllowsPublishingWithoutPlans()
     {
         var product = NewDraft();

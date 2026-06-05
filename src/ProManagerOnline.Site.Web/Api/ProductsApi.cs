@@ -10,7 +10,8 @@ public static class ProductsApi
     /// <returns>The same route builder, for chaining.</returns>
     public static IEndpointRouteBuilder MapProductAdminApi(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/products");
+        // The whole product admin API requires an authenticated admin (cookie auth).
+        var group = app.MapGroup("/api/products").RequireAuthorization();
 
         group.MapGet("/", (IProductAdminApi api, CancellationToken ct) => Run(() => api.ListAsync(ct)));
 
