@@ -1,0 +1,47 @@
+@page "/products"
+@using ProManagerOnline.Site.Application.Products
+@inject ListPublishedProductsHandler ListPublishedProducts
+
+<PageTitle>Products — ProManager Online</PageTitle>
+
+<section class="border-b border-slate-200 bg-gradient-to-b from-brand-light/60 to-white">
+    <div class="container-site py-12">
+        <span class="badge mb-3">Products</span>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Business software you can subscribe to today
+        </h1>
+        <p class="mt-3 max-w-2xl text-lg text-slate-600">
+            Software we build, host and maintain ourselves — billed as a straightforward
+            subscription. Choose a product to see what it does and how it’s priced.
+        </p>
+    </div>
+</section>
+
+<section class="container-site py-10">
+    @if (_products.Count == 0)
+    {
+        <p class="text-slate-600">No products are available just yet — please check back soon.</p>
+    }
+    else
+    {
+        <div class="grid gap-6 md:grid-cols-2">
+            @foreach (var product in _products)
+            {
+                <a class="card flex flex-col transition hover:shadow-card-lg" href="@($"/{product.Slug}")">
+                    <span class="badge self-start">@product.Category</span>
+                    <h2 class="mt-3 text-2xl font-bold text-slate-900">@product.Name</h2>
+                    <p class="mt-2 flex-1 text-slate-600">@product.Summary</p>
+                    <span class="mt-4 text-sm font-semibold text-brand">Explore @product.Name &rarr;</span>
+                </a>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<ProductSummaryDto> _products = [];
+
+    /// <summary>Loads the published products for the public listing.</summary>
+    protected override async Task OnInitializedAsync()
+        => _products = await ListPublishedProducts.Handle();
+}

@@ -40,4 +40,35 @@ public class SlugTests
     {
         Assert.Equal(Slug.Create("workflows"), Slug.Create("workflows"));
     }
+
+    [Theory]
+    [InlineData("workflows")]
+    [InlineData("air-compliance")]
+    [InlineData("plan-2")]
+    public void TryCreate_GivenValidSlug_ReturnsTrueAndExposesValue(string value)
+    {
+        var created = Slug.TryCreate(value, out var slug);
+
+        Assert.True(created);
+        Assert.NotNull(slug);
+        Assert.Equal(value, slug!.Value);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Workflows")]          // uppercase not allowed
+    [InlineData("air compliance")]     // spaces not allowed
+    [InlineData("air_compliance")]     // underscores not allowed
+    [InlineData("-leading")]           // no leading hyphen
+    [InlineData("trailing-")]          // no trailing hyphen
+    [InlineData("double--hyphen")]     // no consecutive hyphens
+    public void TryCreate_GivenInvalidSlug_ReturnsFalseAndNull(string? value)
+    {
+        var created = Slug.TryCreate(value, out var slug);
+
+        Assert.False(created);
+        Assert.Null(slug);
+    }
 }

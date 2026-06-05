@@ -14,6 +14,9 @@ internal sealed class InMemoryProductRepository : IProductRepository
     public Task<Product?> GetByIdAsync(ProductId id, CancellationToken cancellationToken = default)
         => Task.FromResult(_products.GetValueOrDefault(id));
 
+    public Task<Product?> GetBySlugAsync(Slug slug, CancellationToken cancellationToken = default)
+        => Task.FromResult(_products.Values.FirstOrDefault(product => product.Slug == slug));
+
     public Task<bool> SlugExistsAsync(Slug slug, ProductId? excludeId = null, CancellationToken cancellationToken = default)
         => Task.FromResult(_products.Values.Any(product =>
             product.Slug == slug && (excludeId is null || product.Id != excludeId.Value)));

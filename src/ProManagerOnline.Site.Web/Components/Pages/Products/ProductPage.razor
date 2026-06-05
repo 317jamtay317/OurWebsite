@@ -1,0 +1,128 @@
+@page "/{slug}"
+@using ProManagerOnline.Site.Application.Products
+@using ProManagerOnline.Site.Domain.Products
+@inject GetPublishedProductHandler GetPublishedProduct
+@inject NavigationManager Navigation
+
+<PageTitle>@(_product is null ? "Product — ProManager Online" : $"{_product.Name} — ProManager Online")</PageTitle>
+
+@if (_product is not null)
+{
+    <section class="border-b border-slate-200 bg-gradient-to-b from-brand-light/60 to-white">
+        <div class="container-site py-12">
+            <nav aria-label="Breadcrumb" class="mb-4 text-sm text-slate-500">
+                <ol class="flex flex-wrap items-center gap-1.5">
+                    <li><a class="hover:text-brand" href="/products">Products</a></li>
+                    <li aria-hidden="true">/</li>
+                    <li class="font-medium text-slate-700" aria-current="page">@_product.Name</li>
+                </ol>
+            </nav>
+            <span class="badge mb-3">@_product.Category</span>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">@_product.Name</h1>
+            <p class="mt-3 max-w-2xl text-lg text-slate-600">@_product.Summary</p>
+            <div class="mt-6 flex flex-wrap gap-3">
+                @if (_product.PricingKind == PricingKind.Tiered)
+                {
+                    <a class="btn-primary" href="#plans">See plans</a>
+                }
+                else if (_product.PricingKind == PricingKind.Fixed)
+                {
+                    <a class="btn-primary" href="@MailTo($"Get started with {_product.Name}")">Get started</a>
+                }
+                else
+                {
+                    <a class="btn-primary" href="@MailTo($"Quote request: {_product.Name}")">Request a quote</a>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section id="plans" class="container-site py-12">
+        @if (_product.PricingKind == PricingKind.Tiered)
+        {
+            <h2 class="text-2xl font-bold text-slate-900">Plans &amp; pricing</h2>
+            <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var plan in _product.Plans)
+                {
+                    <article class="card flex flex-col @(plan.IsFeatured ? "ring-2 ring-brand shadow-card-lg" : "")">
+                        @if (plan.IsFeatured)
+                        {
+                            <span class="badge self-start">Most popular</span>
+                        }
+                        <h3 class="@(plan.IsFeatured ? "mt-3" : "") text-xl font-bold text-slate-900">@plan.Name</h3>
+                        <p class="mt-2 text-slate-900">
+                            <span class="text-3xl font-bold">@ProductFormatting.Price(plan.Amount)</span>
+                            <span class="text-base font-medium text-slate-500">@ProductFormatting.Billing(plan.BillingPeriod)</span>
+                        </p>
+                        @if (!string.IsNullOrWhiteSpace(plan.Description))
+                        {
+                            <p class="mt-2 text-slate-600">@plan.Description</p>
+                        }
+                        @if (plan.Features.Count > 0)
+                        {
+                            <ul class="mt-4 flex-1 space-y-2 text-sm text-slate-600">
+                                @foreach (var feature in plan.Features)
+                                {
+                                    <li class="flex gap-2">
+                                        <svg class="mt-0.5 h-4 w-4 flex-none text-brand" fill="none" stroke="currentColor"
+                                             stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>@feature</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        <a class="btn-primary mt-6" href="@MailTo($"Sign up: {_product.Name} – {plan.Name}")">Get started</a>
+                    </article>
+                }
+            </div>
+        }
+        else if (_product.PricingKind == PricingKind.Fixed)
+        {
+            <h2 class="text-2xl font-bold text-slate-900">Pricing</h2>
+            <div class="card mt-6 max-w-md">
+                <p class="text-slate-900">
+                    <span class="text-3xl font-bold">@ProductFormatting.Price(_product.FixedPriceAmount ?? 0m)</span>
+                    <span class="text-base font-medium text-slate-500"> one-time</span>
+                </p>
+                <p class="mt-2 text-slate-600">A single one-time price — get in touch and we’ll get you set up.</p>
+                <a class="btn-primary mt-6" href="@MailTo($"Get started with {_product.Name}")">Get started</a>
+            </div>
+        }
+        else
+        {
+            <h2 class="text-2xl font-bold text-slate-900">Pricing</h2>
+            <div class="card mt-6 max-w-2xl">
+                <p class="text-slate-600">
+                    Pricing for @_product.Name is tailored to your operation. Tell us a little about your
+                    needs and we’ll put together a quote.
+                </p>
+                <a class="btn-primary mt-6" href="@MailTo($"Quote request: {_product.Name}")">Request a quote</a>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    /// <summary>The product slug taken from the route.</summary>
+    [Parameter] public string? Slug { get; set; }
+
+    private ProductPageDto? _product;
+
+    /// <summary>
+    /// Loads the published product for the route slug. When no published product matches, renders the
+    /// site's 404 response so unknown slugs behave like any other missing page.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        _product = await GetPublishedProduct.Handle(Slug ?? string.Empty);
+        if (_product is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private static string MailTo(string subject)
+        => $"mailto:support@promanageronline.com?subject={Uri.EscapeDataString(subject)}";
+}
