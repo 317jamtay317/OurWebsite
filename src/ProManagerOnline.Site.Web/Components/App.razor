@@ -1,24 +1,30 @@
-@*
-    Root host document for the Blazor admin. Rendered for the /admin routes; the public
-    marketing site and the account (sign-in) pages remain Razor Pages on _Layout.cshtml.
-    Render mode is chosen per page — the products admin is Interactive Server, the documentation
-    admin is Interactive Auto — so neither HeadOutlet nor Routes carries a global render mode.
-*@
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
     <base href="/" />
-    <title>Admin — ProManager Online</title>
     <meta name="theme-color" content="#4f46e5" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="css/app.css" />
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["css/app.css"]" />
+    <link rel="stylesheet" href="@Assets["ProManagerOnline.Site.Web.styles.css"]" />
+    <ImportMap />
     <HeadOutlet />
 </head>
-<body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
+<body class="flex min-h-screen flex-col bg-white font-sans text-slate-900 antialiased">
     <Routes />
-    <script src="_framework/blazor.web.js"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        // Delegated mobile-nav toggle — survives Blazor enhanced navigation (no per-page re-binding).
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('#nav-toggle') : null;
+            if (!btn) return;
+            var menu = document.getElementById('mobile-nav');
+            if (!menu) return;
+            var open = menu.classList.toggle('hidden') === false;
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    </script>
 </body>
 </html>

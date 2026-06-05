@@ -421,9 +421,66 @@ namespace ProManagerOnline.Site.Infrastructure.Migrations
                                         .HasForeignKey("PlanId");
                                 });
 
+                            b1.OwnsMany("ProManagerOnline.Site.Domain.Products.PlanFeature", "_features", b2 =>
+                                {
+                                    b2.Property<int>("Id")
+                                        .ValueGeneratedOnAdd()
+                                        .HasColumnType("int");
+
+                                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b2.Property<int>("Id"));
+
+                                    b2.Property<Guid>("PlanId")
+                                        .HasColumnType("uniqueidentifier");
+
+                                    b2.Property<int>("Position")
+                                        .HasColumnType("int");
+
+                                    b2.Property<string>("Text")
+                                        .IsRequired()
+                                        .HasMaxLength(200)
+                                        .HasColumnType("nvarchar(200)");
+
+                                    b2.HasKey("Id");
+
+                                    b2.HasIndex("PlanId");
+
+                                    b2.ToTable("ProductPlanFeatures", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("PlanId");
+                                });
+
                             b1.Navigation("Price")
                                 .IsRequired();
+
+                            b1.Navigation("_features");
                         });
+
+                    b.OwnsOne("ProManagerOnline.Site.Domain.ValueObjects.Money", "FixedPrice", b1 =>
+                        {
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("decimal(18,2)")
+                                .HasColumnName("FixedPriceAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("nvarchar(3)")
+                                .HasColumnName("FixedPriceCurrency");
+
+                            b1.HasKey("ProductId");
+
+                            b1.ToTable("Products");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
+                    b.Navigation("FixedPrice");
 
                     b.Navigation("Plans");
                 });

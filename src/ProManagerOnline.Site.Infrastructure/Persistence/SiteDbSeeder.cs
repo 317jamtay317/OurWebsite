@@ -26,9 +26,15 @@ public static class SiteDbSeeder
             "Workflows.AI",
             "Business management",
             "An all-in-one platform that brings customers, quotes, invoicing, inventory and accounting together — with workflow automation for the routine work.");
-        workflows.AddPlan("Solo", "For an owner-operator getting organised.", Money.Create(29m, Currency.Usd), BillingPeriod.Monthly);
-        var team = workflows.AddPlan("Team", "For small contractors and crews.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly);
-        workflows.AddPlan("Business", "For teams that have outgrown five seats.", Money.Create(149m, Currency.Usd), BillingPeriod.Monthly);
+        workflows.AddPlan(
+            "Solo", "For an owner-operator getting organised.", Money.Create(29m, Currency.Usd), BillingPeriod.Monthly,
+            ["1 user", "Customers & CRM", "Quotes & invoicing", "Email support"]);
+        var team = workflows.AddPlan(
+            "Team", "For small contractors and crews.", Money.Create(79m, Currency.Usd), BillingPeriod.Monthly,
+            ["Up to 5 users", "Everything in Solo", "Inventory management", "Workflow automation", "Priority email support"]);
+        workflows.AddPlan(
+            "Business", "For teams that have outgrown five seats.", Money.Create(149m, Currency.Usd), BillingPeriod.Monthly,
+            ["Unlimited users", "Everything in Team", "Accounting & reporting", "API access", "Phone & email support"]);
         workflows.FeaturePlan(team);
         workflows.Publish();
 

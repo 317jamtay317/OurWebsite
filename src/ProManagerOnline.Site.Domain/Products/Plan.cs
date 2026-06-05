@@ -10,6 +10,8 @@ namespace ProManagerOnline.Site.Domain.Products;
 /// </summary>
 public sealed class Plan
 {
+    private readonly List<PlanFeature> _features = [];
+
     // Parameterless constructor required by EF Core for materialisation. The domain
     // always creates plans through Create(...); EF populates the properties afterwards.
     private Plan()
@@ -47,15 +49,22 @@ public sealed class Plan
     /// <summary>Whether this plan is highlighted as the recommended tier.</summary>
     public bool IsFeatured { get; private set; }
 
+    /// <summary>The plan's feature lines, in display order.</summary>
+    public IReadOnlyList<string> Features =>
+        _features.OrderBy(feature => feature.Position).Select(feature => feature.Text).ToList();
+
     /// <summary>Creates a plan. Internal: callable only by the owning <see cref="Product"/>.</summary>
-    internal static Plan Create(string name, string description, Money price, BillingPeriod billingPeriod)
+    internal static Plan Create(
+        string name, string description, Money price, BillingPeriod billingPeriod, IEnumerable<string> features)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new DomainException("A plan must have a name.");
         }
 
-        return new Plan(PlanId.New(), name.Trim(), description.Trim(), price, billingPeriod);
+        var plan = new Plan(PlanId.New(), name.Trim(), description.Trim(), price, billingPeriod);
+        plan.SetFeatures(features);
+        return plan;
     }
 
     /// <summary>Replaces the plan's price. Internal: callable only by the owning product.</summary>
@@ -66,4 +75,31 @@ public sealed class Plan
 
     /// <summary>Clears the plan's featured flag. Internal: callable only by the owning product.</summary>
     internal void Unfeature() => IsFeatured = false;
+
+    /// <summary>Updates the plan's editable details and features. Internal: callable only by the owning product.</summary>
+    internal void Update(
+        string name, string description, Money price, BillingPeriod billingPeriod, IEnumerable<string> features)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new DomainException("A plan must have a name.");
+        }
+
+        Name = name.Trim();
+        Description = description.Trim();
+        Price = price;
+        BillingPeriod = billingPeriod;
+        SetFeatures(features);
+    }
+
+    private void SetFeatures(IEnumerable<string> features)
+    {
+        _features.Clear();
+
+        var position = 0;
+        foreach (var text in features.Where(feature => !string.IsNullOrWhiteSpace(feature)))
+        {
+            _features.Add(PlanFeature.Create(position++, text.Trim()));
+        }
+    }
 }

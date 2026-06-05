@@ -43,7 +43,10 @@ public class LoginModel(SignInManager<ApplicationUser> signInManager) : PageMode
     /// <returns>A redirect on success, otherwise the form re-rendered with an error.</returns>
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
-        returnUrl = string.IsNullOrEmpty(returnUrl) ? Url.Content("~/Admin") : returnUrl;
+        // Only honour a safe, local return URL; otherwise land on the products admin.
+        returnUrl = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)
+            ? returnUrl
+            : Url.Content("~/admin/products");
         ReturnUrl = returnUrl;
 
         if (!ModelState.IsValid)

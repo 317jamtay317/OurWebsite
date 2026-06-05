@@ -1,0 +1,463 @@
+@page "/admin/products/edit/{Id:guid}"
+@rendermode InteractiveAuto
+@inject IProductAdminApi Api
+@inject IJSRuntime JS
+
+<PageTitle>Edit product — ProManager Online</PageTitle>
+
+<section class="container-site max-w-3xl py-10">
+    <a class="text-sm font-medium text-brand hover:underline" href="/admin/products">&larr; Back to products</a>
+
+    @if (_loading)
+    {
+        <p class="mt-8 text-slate-500">Loading…</p>
+    }
+    else if (_product is null)
+    {
+        <div class="card mt-8 text-center">
+            <p class="text-slate-600">That product could not be found.</p>
+            <a class="btn-primary mt-4 inline-flex" href="/admin/products">Back to products</a>
+        </div>
+    }
+    else
+    {
+        <div class="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">@_product.Name</h1>
+                @if (_product.Status == ProductStatus.Published)
+                {
+                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Published</span>
+                }
+                else
+                {
+                    <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">Draft</span>
+                }
+            </div>
+            @if (_product.Status == ProductStatus.Published)
+            {
+                <button type="button" class="btn-secondary" disabled="@_busy" @onclick="UnpublishAsync">Unpublish</button>
+            }
+            else
+            {
+                <button type="button" class="btn-primary" disabled="@_busy" @onclick="PublishAsync">Publish</button>
+            }
+        </div>
+
+        @if (_message is not null)
+        {
+            <div class="mt-6 rounded-card border border-brand/30 bg-brand-light/60 px-4 py-3 text-sm text-brand-darker" role="status">@_message</div>
+        }
+
+        @* ---- Details ---- *@
+        <EditForm Model="_details" OnValidSubmit="SaveDetailsAsync" class="card mt-8 flex flex-col gap-5">
+            <DataAnnotationsValidator />
+            <h2 class="text-xl font-bold text-slate-900">Details</h2>
+            <div>
+                <label class="label" for="name">Name</label>
+                <InputText id="name" class="input mt-1" @bind-Value="_details.Name" />
+                <ValidationMessage For="() => _details.Name" class="field-error" />
+            </div>
+            <div>
+                <label class="label" for="slug">Slug</label>
+                <InputText id="slug" class="input mt-1 font-mono" @bind-Value="_details.Slug" readonly="@(_product.Status == ProductStatus.Published)" />
+                @if (_product.Status == ProductStatus.Published)
+                {
+                    <p class="mt-1 text-xs text-slate-500">Unpublish the product to change its slug.</p>
+                }
+                <ValidationMessage For="() => _details.Slug" class="field-error" />
+            </div>
+            <div>
+                <label class="label" for="category">Category</label>
+                <InputText id="category" class="input mt-1" @bind-Value="_details.Category" />
+                <ValidationMessage For="() => _details.Category" class="field-error" />
+            </div>
+            <div>
+                <label class="label" for="summary">Summary / description</label>
+                <InputTextArea id="summary" class="input mt-1" rows="3" @bind-Value="_details.Summary" />
+                <ValidationMessage For="() => _details.Summary" class="field-error" />
+            </div>
+            <div>
+                <button type="submit" class="btn-primary" disabled="@_busy">Save details</button>
+            </div>
+        </EditForm>
+
+        @* ---- Pricing ---- *@
+        <EditForm Model="_pricing" OnValidSubmit="SavePricingAsync" class="card mt-6 flex flex-col gap-5">
+            <h2 class="text-xl font-bold text-slate-900">Pricing</h2>
+            <InputRadioGroup @bind-Value="_pricing.Kind">
+                <div class="flex flex-col gap-2">
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                        <InputRadio Value="PricingKind.Tiered" />
+                        <span><span class="font-semibold text-slate-900">Subscription</span> &mdash; tiers (Basic, Pro, Enterprise)</span>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                        <InputRadio Value="PricingKind.Fixed" />
+                        <span><span class="font-semibold text-slate-900">Fixed price</span> &mdash; a single one-time amount</span>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand-light/40">
+                        <InputRadio Value="PricingKind.Quote" />
+                        <span><span class="font-semibold text-slate-900">Quote-based</span> &mdash; customers request a quote</span>
+                    </label>
+                </div>
+            </InputRadioGroup>
+            @if (_pricing.Kind == PricingKind.Fixed)
+            {
+                <div>
+                    <label class="label" for="fixed">One-time price (USD)</label>
+                    <InputNumber id="fixed" class="input mt-1" @bind-Value="_pricing.FixedPriceAmount" placeholder="499.00" />
+                </div>
+            }
+            <p class="text-xs text-slate-500">Switching away from subscription removes any tiers.</p>
+            <div>
+                <button type="submit" class="btn-primary" disabled="@_busy">Save pricing</button>
+            </div>
+        </EditForm>
+
+        @* ---- Tiers / pricing detail ---- *@
+        @if (_product.PricingKind == PricingKind.Tiered)
+        {
+            <div class="mt-8">
+                <h2 class="text-xl font-bold text-slate-900">Tiers</h2>
+                @if (_product.Plans.Count == 0)
+                {
+                    <p class="mt-1 text-slate-600">No tiers yet. Add your first below.</p>
+                }
+
+                <div class="mt-4 flex flex-col gap-4">
+                    @foreach (var plan in _product.Plans)
+                    {
+                        <div class="card">
+                            @if (_editingPlanId == plan.Id)
+                            {
+                                <EditForm Model="_editPlan" OnValidSubmit="SaveEditAsync" class="flex flex-col gap-4">
+                                    <DataAnnotationsValidator />
+                                    <div class="grid gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label class="label">Name</label>
+                                            <InputText class="input mt-1" @bind-Value="_editPlan.Name" />
+                                            <ValidationMessage For="() => _editPlan.Name" class="field-error" />
+                                        </div>
+                                        <div>
+                                            <label class="label">Description</label>
+                                            <InputText class="input mt-1" @bind-Value="_editPlan.Description" />
+                                        </div>
+                                        <div>
+                                            <label class="label">Price (USD)</label>
+                                            <InputNumber class="input mt-1" @bind-Value="_editPlan.Amount" />
+                                        </div>
+                                        <div>
+                                            <label class="label">Billing</label>
+                                            <InputSelect class="input mt-1" @bind-Value="_editPlan.BillingPeriod">
+                                                <option value="Monthly">Monthly</option>
+                                                <option value="Annual">Annual</option>
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="label">Features (one per line)</label>
+                                        <InputTextArea class="input mt-1" rows="4" @bind-Value="_editPlan.FeaturesText" />
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button type="submit" class="btn-primary" disabled="@_busy">Save tier</button>
+                                        <button type="button" class="btn-secondary" @onclick="CancelEdit">Cancel</button>
+                                    </div>
+                                </EditForm>
+                            }
+                            else
+                            {
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h3 class="text-lg font-bold text-slate-900">@plan.Name</h3>
+                                            @if (plan.IsFeatured)
+                                            {
+                                                <span class="badge">Featured</span>
+                                            }
+                                        </div>
+                                        <p class="mt-1 text-slate-600">
+                                            <span class="font-semibold text-slate-900">@ProductFormatting.Price(plan.Amount)</span><span class="text-slate-500">@ProductFormatting.Billing(plan.BillingPeriod)</span>
+                                            @if (!string.IsNullOrWhiteSpace(plan.Description))
+                                            {
+                                                <span> &middot; @plan.Description</span>
+                                            }
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        @if (!plan.IsFeatured)
+                                        {
+                                            <button type="button" class="btn-ghost" disabled="@_busy" @onclick="() => FeaturePlanAsync(plan.Id)">Make featured</button>
+                                        }
+                                        <button type="button" class="btn-secondary" @onclick="() => StartEdit(plan)">Edit</button>
+                                        <button type="button" class="btn-danger" disabled="@_busy" @onclick="() => RemovePlanAsync(plan)">Remove</button>
+                                    </div>
+                                </div>
+                                @if (plan.Features.Count > 0)
+                                {
+                                    <ul class="mt-3 grid gap-1 sm:grid-cols-2">
+                                        @foreach (var feature in plan.Features)
+                                        {
+                                            <li class="flex items-start gap-2 text-sm text-slate-700">
+                                                <span class="mt-0.5 text-brand" aria-hidden="true">&check;</span>
+                                                <span>@feature</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+
+                @* ---- Add tier ---- *@
+                <EditForm Model="_newPlan" OnValidSubmit="AddPlanAsync" class="card mt-4 flex flex-col gap-4 border-dashed">
+                    <DataAnnotationsValidator />
+                    <h3 class="text-lg font-bold text-slate-900">Add a tier</h3>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="label">Name</label>
+                            <InputText class="input mt-1" @bind-Value="_newPlan.Name" placeholder="Pro" />
+                            <ValidationMessage For="() => _newPlan.Name" class="field-error" />
+                        </div>
+                        <div>
+                            <label class="label">Description</label>
+                            <InputText class="input mt-1" @bind-Value="_newPlan.Description" placeholder="For growing teams." />
+                        </div>
+                        <div>
+                            <label class="label">Price (USD)</label>
+                            <InputNumber class="input mt-1" @bind-Value="_newPlan.Amount" />
+                        </div>
+                        <div>
+                            <label class="label">Billing</label>
+                            <InputSelect class="input mt-1" @bind-Value="_newPlan.BillingPeriod">
+                                <option value="Monthly">Monthly</option>
+                                <option value="Annual">Annual</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="label">Features (one per line)</label>
+                        <InputTextArea class="input mt-1" rows="4" @bind-Value="_newPlan.FeaturesText" placeholder="Unlimited projects&#10;Priority support&#10;Advanced reports" />
+                    </div>
+                    <div>
+                        <button type="submit" class="btn-primary" disabled="@_busy">Add tier</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+        else if (_product.PricingKind == PricingKind.Fixed)
+        {
+            <div class="card mt-8">
+                <h2 class="text-xl font-bold text-slate-900">Fixed price</h2>
+                <p class="mt-2 text-slate-600">
+                    One-time price: <span class="font-semibold text-slate-900">@ProductFormatting.Price(_product.FixedPriceAmount ?? 0m)</span>.
+                    Change the price in the Pricing section above, or switch to a subscription to add tiers.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="card mt-8">
+                <h2 class="text-xl font-bold text-slate-900">Quote-based</h2>
+                <p class="mt-2 text-slate-600">Customers request a quote for this product. Switch to a subscription above to add tiers.</p>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    /// <summary>The product being edited.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ProductDetail? _product;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _message;
+    private Guid? _editingPlanId;
+
+    private readonly DetailsModel _details = new();
+    private readonly PricingModel _pricing = new();
+    private readonly PlanModel _newPlan = new();
+    private readonly PlanModel _editPlan = new();
+    private Guid _loadedId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == Id && _product is not null)
+        {
+            return;
+        }
+
+        _loadedId = Id;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _product = await Api.GetAsync(Id);
+            if (_product is not null)
+            {
+                _details.Slug = _product.Slug;
+                _details.Name = _product.Name;
+                _details.Category = _product.Category;
+                _details.Summary = _product.Summary;
+                _pricing.Kind = _product.PricingKind;
+                _pricing.FixedPriceAmount = _product.FixedPriceAmount;
+            }
+        }
+        catch (ProductAdminException exception)
+        {
+            _message = exception.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task SaveDetailsAsync() => RunAsync(
+        () => Api.UpdateDetailsAsync(Id, new UpdateProductDetailsRequest(
+            _details.Slug!, _details.Name!, _details.Category!, _details.Summary!)),
+        "Details saved.");
+
+    private async Task SavePricingAsync()
+    {
+        if (_pricing.Kind != PricingKind.Tiered && _product is { Plans.Count: > 0 }
+            && !await JS.InvokeAsync<bool>("confirm", "Switching away from subscription will remove this product's tiers. Continue?"))
+        {
+            return;
+        }
+
+        var amount = _pricing.Kind == PricingKind.Fixed ? _pricing.FixedPriceAmount : null;
+        await RunAsync(
+            () => Api.SetPricingAsync(Id, new SetProductPricingRequest(_pricing.Kind, amount)),
+            "Pricing updated.");
+    }
+
+    private Task AddPlanAsync() => RunAsync(
+        async () =>
+        {
+            await Api.AddPlanAsync(Id, new AddPlanRequest(
+                _newPlan.Name!, _newPlan.Description ?? "", _newPlan.Amount, _newPlan.BillingPeriod,
+                SplitFeatures(_newPlan.FeaturesText)));
+            _newPlan.Reset();
+        },
+        "Tier added.");
+
+    private void StartEdit(PlanDetail plan)
+    {
+        _editingPlanId = plan.Id;
+        _editPlan.Name = plan.Name;
+        _editPlan.Description = plan.Description;
+        _editPlan.Amount = plan.Amount;
+        _editPlan.BillingPeriod = plan.BillingPeriod;
+        _editPlan.FeaturesText = string.Join("\n", plan.Features);
+    }
+
+    private void CancelEdit() => _editingPlanId = null;
+
+    private Task SaveEditAsync()
+    {
+        var planId = _editingPlanId!.Value;
+        return RunAsync(
+            async () =>
+            {
+                await Api.UpdatePlanAsync(Id, planId, new UpdatePlanRequest(
+                    _editPlan.Name!, _editPlan.Description ?? "", _editPlan.Amount, _editPlan.BillingPeriod,
+                    SplitFeatures(_editPlan.FeaturesText)));
+                _editingPlanId = null;
+            },
+            "Tier updated.");
+    }
+
+    private async Task RemovePlanAsync(PlanDetail plan)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Remove the \"{plan.Name}\" tier?"))
+        {
+            return;
+        }
+
+        await RunAsync(() => Api.RemovePlanAsync(Id, plan.Id), "Tier removed.");
+    }
+
+    private Task FeaturePlanAsync(Guid planId) => RunAsync(() => Api.FeaturePlanAsync(Id, planId), "Featured tier set.");
+
+    private Task PublishAsync() => RunAsync(() => Api.PublishAsync(Id), "Product published.");
+
+    private Task UnpublishAsync() => RunAsync(() => Api.UnpublishAsync(Id), "Product moved to draft.");
+
+    private async Task RunAsync(Func<Task> action, string success)
+    {
+        _busy = true;
+        try
+        {
+            await action();
+            _message = success;
+            await LoadAsync();
+        }
+        catch (ProductAdminException exception)
+        {
+            _message = exception.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static IReadOnlyList<string> SplitFeatures(string? text)
+        => string.IsNullOrWhiteSpace(text)
+            ? []
+            : text.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).ToList();
+
+    private sealed class DetailsModel
+    {
+        [Required]
+        public string? Name { get; set; }
+
+        [Required]
+        [RegularExpression(
+            "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            ErrorMessage = "Use lowercase letters, digits and single hyphens.")]
+        public string? Slug { get; set; }
+
+        [Required]
+        public string? Category { get; set; }
+
+        [Required]
+        public string? Summary { get; set; }
+    }
+
+    private sealed class PricingModel
+    {
+        public PricingKind Kind { get; set; } = PricingKind.Tiered;
+
+        public decimal? FixedPriceAmount { get; set; }
+    }
+
+    private sealed class PlanModel
+    {
+        [Required]
+        public string? Name { get; set; }
+
+        public string? Description { get; set; }
+
+        public decimal Amount { get; set; }
+
+        public BillingPeriod BillingPeriod { get; set; } = BillingPeriod.Monthly;
+
+        public string? FeaturesText { get; set; }
+
+        public void Reset()
+        {
+            Name = null;
+            Description = null;
+            Amount = 0;
+            BillingPeriod = BillingPeriod.Monthly;
+            FeaturesText = null;
+        }
+    }
+}

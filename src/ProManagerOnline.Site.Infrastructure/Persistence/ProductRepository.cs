@@ -13,8 +13,17 @@ public sealed class ProductRepository(SiteDbContext context) : IProductRepositor
         => await context.Products.FirstOrDefaultAsync(product => product.Id == id, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<bool> SlugExistsAsync(Slug slug, CancellationToken cancellationToken = default)
-        => await context.Products.AnyAsync(product => product.Slug == slug, cancellationToken);
+    public async Task<bool> SlugExistsAsync(Slug slug, ProductId? excludeId = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.Products.Where(product => product.Slug == slug);
+
+        if (excludeId is { } id)
+        {
+            query = query.Where(product => product.Id != id);
+        }
+
+        return await query.AnyAsync(cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Product>> ListPublishedAsync(CancellationToken cancellationToken = default)
@@ -35,8 +44,12 @@ public sealed class ProductRepository(SiteDbContext context) : IProductRepositor
 
     /// <inheritdoc />
     public async Task UpdateAsync(Product product, CancellationToken cancellationToken = default)
+        => await context.SaveChangesAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public async Task RemoveAsync(Product product, CancellationToken cancellationToken = default)
     {
-        context.Products.Update(product);
+        context.Products.Remove(product);
         await context.SaveChangesAsync(cancellationToken);
     }
 }

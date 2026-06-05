@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using ProManagerOnline.Site.Application.Administration;
 using ProManagerOnline.Site.Application.Email;
@@ -23,7 +24,11 @@ public static class DependencyInjection
     /// <returns>The same service collection, for chaining.</returns>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<SiteDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddDbContext<SiteDbContext>(options => options
+            .UseSqlServer(connectionString)
+            // The product aggregate loads plans and their features together. For a small
+            // catalogue a single query is fine, so silence the split-query advisory warning.
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.MultipleCollectionIncludeWarning)));
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IDocArticleRepository, DocArticleRepository>();
         services.AddScoped<IAdminAccountService, AdminAccountService>();

@@ -1,0 +1,39 @@
+@using ProManagerOnline.Site.Application.Documentation
+
+@* Documentation section/article navigation, shared by the product overview and the article view. *@
+<nav class="rounded-card border border-slate-200 bg-slate-50/60 p-4 text-sm" aria-label="Documentation sections">
+    <a href="@($"/docs/{Navigation.ProductId}")" class="block font-bold text-slate-900 hover:text-brand">
+        @Navigation.ProductName
+    </a>
+    <div class="mt-4 space-y-5">
+        @foreach (var docSection in Navigation.Sections)
+        {
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">@docSection.Section</p>
+                <ul class="mt-2 space-y-0.5">
+                    @foreach (var article in docSection.Articles)
+                    {
+                        var isCurrent = CurrentSlug is not null && CurrentSlug == article.Slug;
+                        <li>
+                            <a href="@($"/docs/{Navigation.ProductId}/{article.Slug}")"
+                               aria-current="@(isCurrent ? "page" : null)"
+                               class="@(isCurrent
+                                   ? "block rounded-md bg-brand-light px-3 py-2 font-semibold text-brand-darker"
+                                   : "block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100 hover:text-brand")">
+                                @article.Title
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</nav>
+
+@code {
+    /// <summary>The product's documentation navigation tree to render.</summary>
+    [Parameter, EditorRequired] public DocNavigationDto Navigation { get; set; } = null!;
+
+    /// <summary>The slug of the article currently being read (highlighted); <see langword="null"/> on the overview.</summary>
+    [Parameter] public string? CurrentSlug { get; set; }
+}

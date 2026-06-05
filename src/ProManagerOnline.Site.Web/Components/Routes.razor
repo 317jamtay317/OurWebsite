@@ -1,29 +1,8 @@
-@*
-    Router for the Blazor admin. Every admin route requires an authenticated admin; an
-    unauthenticated in-circuit navigation falls back to a full redirect to the sign-in page
-    (the initial request is already gated at the endpoint with RequireAuthorization). The
-    documentation admin pages live in the Web.Client assembly, registered via AdditionalAssemblies.
-*@
-<Router AppAssembly="typeof(App).Assembly"
-        AdditionalAssemblies="new[] { typeof(ProManagerOnline.Site.Web.Client.Services.IDocsAdminApi).Assembly }">
+<Router AppAssembly="typeof(Program).Assembly"
+        AdditionalAssemblies="new[] { typeof(ProManagerOnline.Site.Web.Client._Imports).Assembly }"
+        NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)">
-            <NotAuthorized>
-                <RedirectToLogin />
-            </NotAuthorized>
-            <Authorizing>
-                <div class="container-site py-12 text-slate-600">Authorizing…</div>
-            </Authorizing>
-        </AuthorizeRouteView>
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
-    <NotFound>
-        <LayoutView Layout="typeof(AdminLayout)">
-            <div class="container-site py-12">
-                <h1 class="text-xl font-bold text-slate-900">Page not found</h1>
-                <p class="mt-2 text-slate-600">That admin page doesn't exist.</p>
-                <a class="btn-secondary mt-6 inline-flex" href="/admin">Go to dashboard</a>
-            </div>
-        </LayoutView>
-    </NotFound>
 </Router>

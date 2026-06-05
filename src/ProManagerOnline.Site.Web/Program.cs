@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using ProManagerOnline.Site.Application;
 using ProManagerOnline.Site.Application.Documentation;
+using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Infrastructure;
 using ProManagerOnline.Site.Infrastructure.Identity;
 using ProManagerOnline.Site.Infrastructure.Persistence;
 using ProManagerOnline.Site.Web.Admin;
+using ProManagerOnline.Site.Web.Api;
 using ProManagerOnline.Site.Web.Components;
 using ProManagerOnline.Site.Web.Components.Account;
 using ProManagerOnline.Site.Web.Media;
@@ -16,27 +17,29 @@ using ProManagerOnline.Site.Web.Client.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Presentation: the public marketing site and the admin account (sign-in) pages are Razor Pages;
-// the admin CMS is Blazor. The whole /Admin Razor Pages folder requires a signed-in admin, except
-// the account pages (login, forgot/reset password and the lockout/access-denied notices).
+// Presentation: a Blazor Web App with Interactive Auto components, plus Razor Pages for the
+// Identity account screens (sign in, password reset). The /Admin Razor Pages require a signed-in
+// admin; the account pages are anonymous.
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents()
+    .AddInteractiveWebAssemblyComponents();
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/Admin");
     options.Conventions.AllowAnonymousToFolder("/Admin/Account");
 });
 
-// The products admin renders Interactive Server; the documentation admin renders Interactive Auto
-// (server first, then WebAssembly once cached), so both component runtimes are registered.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
-
-builder.Services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("SiteDatabase")!);
 
-// The documentation admin's screenshot storage and its in-process data gateway (the server side of
-// the Interactive Auto components; the browser side calls the JSON API instead).
+// Server-side implementation of the product admin API, used when Interactive Auto components
+// render on the server and by the JSON endpoints the WebAssembly client calls.
+builder.Services.AddScoped<IProductAdminApi, ServerProductAdminApi>();
+
+// Documentation feature: Markdown rendering for the public reader, screenshot storage for the
+// authoring admin, and the in-process gateway behind the Interactive Auto documentation admin
+// (the browser side calls the JSON API instead).
+builder.Services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
 builder.Services.AddScoped<IDocMediaStorage, WwwrootDocMediaStorage>();
 builder.Services.AddScoped<IDocsAdminApi, ServerDocsAdminApi>();
 
@@ -77,22 +80,19 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // Flow the Identity auth state into the Blazor components. The persisting provider revalidates the
-// security stamp on the server circuit AND persists the signed-in user to the page, so the
-// Interactive Auto documentation admin can authorize once it is running in WebAssembly.
+// security stamp on the server circuit AND persists the signed-in user to the page, so Interactive
+// Auto admin components can authorize once they are running in WebAssembly.
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
-else
-{
-    // In development, bring the database up to date, seed the catalogue, and ensure the owner admin
-    // account exists (credentials come from configuration / user-secrets).
+    app.UseWebAssemblyDebugging();
+
+    // In development, bring the database up to date, seed the catalogue, and ensure the owner
+    // admin account exists (credentials come from configuration / user-secrets).
     using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
 
@@ -108,34 +108,52 @@ else
         await AdminSeeder.SeedAsync(userManager, adminEmail, adminPassword);
     }
 }
+else
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
 
+app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
-app.UseStaticFiles();       // serves runtime-uploaded screenshots from wwwroot/docs-media
-app.UseRouting();
+app.UseStaticFiles();       // serves runtime-uploaded documentation screenshots from wwwroot/docs-media
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Required by Blazor's interactive components (form posts / SignalR handshake).
+// Gate the Blazor admin (/admin/*) on an authenticated admin. The account pages stay anonymous,
+// and the public site and JSON API are handled elsewhere. The initial (server) request to an
+// admin page is redirected to the sign-in page when there is no cookie.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var isAdmin = path.StartsWithSegments("/admin", StringComparison.OrdinalIgnoreCase)
+        && !path.StartsWithSegments("/admin/account", StringComparison.OrdinalIgnoreCase);
+
+    if (isAdmin && context.User.Identity?.IsAuthenticated != true)
+    {
+        var returnUrl = Uri.EscapeDataString(path + context.Request.QueryString);
+        context.Response.Redirect($"/Admin/Account/Login?returnUrl={returnUrl}");
+        return;
+    }
+
+    await next();
+});
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(ProManagerOnline.Site.Web.Client._Imports).Assembly);
+app.MapRazorPages();
+
+// JSON APIs the WebAssembly admin clients call (each requires an authenticated admin internally).
+app.MapProductAdminApi();
+app.MapAdminDocsApi();
 
 // Model Context Protocol endpoint (Streamable HTTP) for MCP clients.
 app.MapMcp("/mcp");
-
-// The Blazor admin lives under /admin and requires an authenticated admin (unauthenticated requests
-// are redirected to the Razor Pages sign-in via the application cookie's LoginPath). The
-// documentation admin's components live in the Web.Client assembly and reach data through the JSON
-// API, which is likewise authorized.
-app.MapRazorComponents<App>()
-   .AddInteractiveServerRenderMode()
-   .AddInteractiveWebAssemblyRenderMode()
-   .AddAdditionalAssemblies(typeof(IDocsAdminApi).Assembly)
-   .RequireAuthorization();
-
-app.MapAdminDocsApi();
 
 app.Run();

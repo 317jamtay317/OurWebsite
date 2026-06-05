@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* The Blazor authoring admin lives in the sibling Web.Client project, outside this project's
-   directory, so register it as an extra content source — otherwise the utility classes used only
-   by the admin components would be missing from the generated stylesheet. */
-@source "../../ProManagerOnline.Site.Web.Client";
+/* Scan Blazor components in both the server and WebAssembly client projects for class names —
+   the WebAssembly client is a sibling project outside this CSS file's directory tree. */
+@source "../Components/**/*.razor";
+@source "../../ProManagerOnline.Site.Web.Client/**/*.razor";
 
 /* Brand design tokens, ported from the original site's CSS custom properties.
    The palette is Tailwind's own indigo / cyan / slate, so most utilities work as-is. */
@@ -38,6 +38,9 @@
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition text-slate-700 hover:text-brand;
   }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition border border-red-200 text-red-600 hover:bg-red-50;
+  }
   .badge {
     @apply inline-flex items-center rounded-full bg-brand-light px-3 py-1 text-xs font-semibold text-brand-darker;
   }
@@ -45,10 +48,13 @@
     @apply rounded-card border border-slate-200 bg-white p-6 shadow-card;
   }
   .label {
-    @apply block text-sm font-medium text-slate-700;
+    @apply block text-sm font-semibold text-slate-700;
   }
   .input {
-    @apply mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30;
+    @apply w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30;
+  }
+  .field-error {
+    @apply mt-1 block text-sm text-red-600;
   }
 }
 
