@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using ProManagerOnline.Site.Application;
 using ProManagerOnline.Site.Application.Documentation;
 using ProManagerOnline.Site.Contracts;
@@ -12,6 +13,7 @@ using ProManagerOnline.Site.Web.Components;
 using ProManagerOnline.Site.Web.Components.Account;
 using ProManagerOnline.Site.Web.Media;
 using ProManagerOnline.Site.Web.Rendering;
+using ProManagerOnline.Site.Web.Startup;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,34 +89,48 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
 
+// Persist Data Protection keys to a durable location when one is configured (the cloud deployment
+// mounts shared storage at this path). This keeps the keys that protect auth cookies and antiforgery
+// tokens stable across container restarts and replicas. With no path configured the framework's
+// per-instance, ephemeral key ring is used, which is fine for local development.
+var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"];
+if (!string.IsNullOrWhiteSpace(keyRingPath))
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
+        .SetApplicationName("ProManagerOnline.Site");
+}
+
+// Behind the cloud ingress (Container Apps) TLS is terminated at the proxy and the app receives
+// plain HTTP with the original scheme in X-Forwarded-Proto. Honour those headers so HTTPS
+// redirection, HSTS and generated links use the real scheme instead of redirect-looping. Locally
+// the headers are absent, so this is a harmless no-op.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
-
-    // In development, bring the database up to date, seed the catalogue, and ensure the owner
-    // admin account exists (credentials come from configuration / user-secrets).
-    using var scope = app.Services.CreateScope();
-    var services = scope.ServiceProvider;
-
-    var database = services.GetRequiredService<SiteDbContext>();
-    await database.Database.MigrateAsync();
-    await SiteDbSeeder.SeedAsync(database);
-
-    var adminEmail = app.Configuration["Admin:Email"];
-    var adminPassword = app.Configuration["Admin:InitialPassword"];
-    if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
-    {
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        await AdminSeeder.SeedAsync(userManager, adminEmail, adminPassword);
-    }
 }
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
+
+// Bring the database up to date and seed it on every start, in every environment, so a fresh
+// deployment (local or cloud) is usable on first boot with no manual database step: migrations are
+// applied, the catalogue is seeded, and the owner admin is created from configuration. Each step is
+// idempotent.
+await DatabaseInitializer.InitializeAsync(app.Services, app.Configuration);
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
