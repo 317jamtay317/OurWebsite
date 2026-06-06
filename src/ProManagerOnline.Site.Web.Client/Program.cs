@@ -10,5 +10,6 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped<IProductAdminApi, HttpClientProductAdminApi>();
 builder.Services.AddScoped<IDocsAdminApi, HttpClientDocsAdminApi>();
+builder.Services.AddScoped<IAboutPageAdminApi, HttpClientAboutPageAdminApi>();
 
 await builder.Build().RunAsync();

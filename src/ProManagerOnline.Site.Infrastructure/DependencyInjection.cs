@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ProManagerOnline.Site.Application.Administration;
 using ProManagerOnline.Site.Application.Email;
 using ProManagerOnline.Site.Application.Security;
+using ProManagerOnline.Site.Domain.Content;
 using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
 using ProManagerOnline.Site.Infrastructure.Email;
@@ -39,6 +40,7 @@ public static class DependencyInjection
             .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.MultipleCollectionIncludeWarning)));
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IDocArticleRepository, DocArticleRepository>();
+        services.AddScoped<IAboutPageRepository, AboutPageRepository>();
         services.AddScoped<IAdminAccountService, AdminAccountService>();
 
         AddEmailSender(services, configuration);

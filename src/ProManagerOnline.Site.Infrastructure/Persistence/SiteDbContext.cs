@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using ProManagerOnline.Site.Domain.Content;
 using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
 using ProManagerOnline.Site.Infrastructure.Identity;
@@ -24,6 +25,9 @@ public sealed class SiteDbContext : IdentityDbContext<ApplicationUser>
 
     /// <summary>The documentation articles.</summary>
     public DbSet<DocArticle> DocArticles => Set<DocArticle>();
+
+    /// <summary>The singleton About page content (zero or one row).</summary>
+    public DbSet<AboutPage> AboutPages => Set<AboutPage>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

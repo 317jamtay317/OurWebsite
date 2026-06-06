@@ -41,6 +41,10 @@ builder.Services.AddSingleton<IMarkdownRenderer, MarkdigMarkdownRenderer>();
 builder.Services.AddScoped<IDocMediaStorage, WwwrootDocMediaStorage>();
 builder.Services.AddScoped<IDocsAdminApi, ServerDocsAdminApi>();
 
+// About-page admin: the in-process gateway behind the Interactive Auto editor (the browser side
+// calls the JSON API instead).
+builder.Services.AddScoped<IAboutPageAdminApi, ServerAboutPageAdminApi>();
+
 // Model Context Protocol server, exposing the site's tools over Streamable HTTP.
 builder.Services
     .AddMcpServer()
@@ -150,6 +154,7 @@ app.MapRazorPages();
 // JSON APIs the WebAssembly admin clients call (each requires an authenticated admin internally).
 app.MapProductAdminApi();
 app.MapDocsAdminApi();
+app.MapAboutPageAdminApi();
 
 // Model Context Protocol endpoint (Streamable HTTP) for MCP clients.
 app.MapMcp("/mcp");
