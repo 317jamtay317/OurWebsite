@@ -1,63 +1,59 @@
 <#
 .SYNOPSIS
-    Builds, pushes, and deploys ProManager Online to Azure Container Apps.
+    Builds, pushes, and rolls out a new image for the ProManager Online site Container App.
 
 .DESCRIPTION
-    Run this from a console where you are already signed in to BOTH:
-      • Azure        — `az login`      (your account needs Owner on the resource group)
-      • Docker Hub   — `docker login`  (to push the private image)
+    Routine deploy, matching how the other apps in the ProjectManagement resource group are managed
+    (billingagent, mcpserver, …). Run from a console signed in to BOTH:
+      • Azure       — `az login`
+      • Docker Hub  — `docker login`  (to push the private image)
 
-    All application secrets are read from Key Vault at runtime, so none are passed here. See
-    infra/README.md for the one-time setup (resource group, Key Vault, and the secrets to add).
+    The Container App, its secrets, and its config are created once with `az containerapp create`
+    (see infra/README.md). This script only builds + pushes a new image and rolls it out, so no
+    secrets are involved here. If the app does not exist yet, it tells you to run the one-time create.
 
 .EXAMPLE
     ./infra/deploy.ps1
-    ./infra/deploy.ps1 -Tag v1 -EnableSmtp -EnableRecaptcha
+    ./infra/deploy.ps1 -Tag v2
+    ./infra/deploy.ps1 -SkipBuild
 #>
 [CmdletBinding()]
 param(
     [string]$ResourceGroup = 'ProjectManagement',
-    [string]$Location      = 'eastus2',
-    [string]$KeyVaultName  = 'kv-promanageronline',
-    [string]$ImageRepo     = 'docker.io/jamtay317/promanageronline_website',
+    [string]$AppName       = 'promanageronline-web',
+    [string]$DockerRepo    = 'jamtay317/promanageronline_website',
     [string]$Tag           = (Get-Date -Format 'yyyyMMddHHmmss'),
-    [switch]$EnableSmtp,
-    [switch]$EnableRecaptcha,
     [switch]$SkipBuild
 )
 
 $ErrorActionPreference = 'Stop'
-$bicep = Join-Path $PSScriptRoot 'main.bicep'
-$image = "${ImageRepo}:${Tag}"
-$latest = "${ImageRepo}:latest"
+$pushImage     = "${DockerRepo}:${Tag}"
+$latestImage   = "${DockerRepo}:latest"
+$registryImage = "registry.hub.docker.com/${DockerRepo}:${Tag}"
+
+# Fail early with a helpful message if the app hasn't been created yet.
+$existing = az containerapp show --name $AppName --resource-group $ResourceGroup --query name -o tsv 2>$null
+if (-not $existing) {
+    throw "Container App '$AppName' not found in '$ResourceGroup'. Run the one-time 'az containerapp create' from infra/README.md first."
+}
 
 if (-not $SkipBuild) {
-    Write-Host "Building $image ..." -ForegroundColor Cyan
-    # Build context is the repository root (one level up from infra/).
-    docker build -t $image -t $latest (Join-Path $PSScriptRoot '..')
+    Write-Host "Building $pushImage ..." -ForegroundColor Cyan
+    docker build -t $pushImage -t $latestImage (Join-Path $PSScriptRoot '..')
     if ($LASTEXITCODE -ne 0) { throw 'docker build failed' }
 
     Write-Host "Pushing to Docker Hub ..." -ForegroundColor Cyan
-    docker push $image;  if ($LASTEXITCODE -ne 0) { throw 'docker push failed' }
-    docker push $latest; if ($LASTEXITCODE -ne 0) { throw 'docker push (latest) failed' }
+    docker push $pushImage;   if ($LASTEXITCODE -ne 0) { throw 'docker push failed' }
+    docker push $latestImage; if ($LASTEXITCODE -ne 0) { throw 'docker push (latest) failed' }
 }
 
-Write-Host "Ensuring resource group $ResourceGroup ..." -ForegroundColor Cyan
-az group create --name $ResourceGroup --location $Location --output none
-if ($LASTEXITCODE -ne 0) { throw 'az group create failed' }
-
-Write-Host "Deploying infrastructure ..." -ForegroundColor Cyan
-$url = az deployment group create `
+Write-Host "Rolling out $registryImage ..." -ForegroundColor Cyan
+$fqdn = az containerapp update `
+    --name $AppName `
     --resource-group $ResourceGroup `
-    --template-file $bicep `
-    --query properties.outputs.containerAppUrl.value -o tsv `
-    --parameters `
-        location=$Location `
-        containerImage=$image `
-        keyVaultName=$KeyVaultName `
-        enableSmtp=$($EnableSmtp.IsPresent.ToString().ToLower()) `
-        enableRecaptcha=$($EnableRecaptcha.IsPresent.ToString().ToLower())
-if ($LASTEXITCODE -ne 0) { throw 'az deployment group create failed' }
+    --image $registryImage `
+    --query properties.configuration.ingress.fqdn -o tsv
+if ($LASTEXITCODE -ne 0) { throw 'az containerapp update failed' }
 
 Write-Host ""
-Write-Host "Deployed: $url" -ForegroundColor Green
+Write-Host "Deployed: https://$fqdn" -ForegroundColor Green
