@@ -22,24 +22,55 @@
         </button>
 
         <nav aria-label="Primary" class="hidden items-center gap-6 text-sm font-medium text-slate-700 md:flex">
-            <a class="hover:text-brand" href="/products">Products</a>
-            <a class="hover:text-brand" href="/services">Services</a>
-            <a class="hover:text-brand" href="/pricing">Pricing</a>
-            <a class="hover:text-brand" href="/docs">Docs</a>
-            <a class="hover:text-brand" href="/about">About</a>
-            <a class="btn-primary" href="/contact">Contact</a>
+            <AuthorizeView>
+                @* Signed-in admin: the nav points at the editors and hides the public marketing links. *@
+                <Authorized>
+                    <a class="hover:text-brand" href="/admin/products">Products</a>
+                    <a class="hover:text-brand" href="/admin/docs">Docs</a>
+                    <a class="hover:text-brand" href="/admin/about">About</a>
+                    <form method="post" action="/Admin/Account/Logout" class="contents">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn-primary">Sign out</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="hover:text-brand" href="/products">Products</a>
+                    <a class="hover:text-brand" href="/services">Services</a>
+                    <a class="hover:text-brand" href="/pricing">Pricing</a>
+                    <a class="hover:text-brand" href="/docs">Docs</a>
+                    <a class="hover:text-brand" href="/about">About</a>
+                    <a class="hover:text-brand" href="https://app.promanageronline.com">Customer Portal</a>
+                    <a class="hover:text-brand" href="/Admin/Account/Login">Sign in</a>
+                    <a class="btn-primary" href="/contact">Contact</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </nav>
     </div>
 
     <nav id="mobile-nav" aria-label="Primary" class="hidden border-t border-slate-200 bg-white md:hidden">
         <div class="container-site flex flex-col gap-1 py-3 text-slate-700">
-            <a class="rounded px-2 py-2 hover:bg-slate-100" href="/products">Products</a>
-            <a class="rounded px-2 py-2 hover:bg-slate-100" href="/services">Services</a>
-            <a class="rounded px-2 py-2 hover:bg-slate-100" href="/pricing">Pricing</a>
-            <a class="rounded px-2 py-2 hover:bg-slate-100" href="/docs">Docs</a>
-            <a class="rounded px-2 py-2 hover:bg-slate-100" href="/about">About</a>
-            <a class="rounded px-2 py-2 hover:bg-slate-100" href="/faq">FAQ</a>
-            <a class="btn-primary mt-2 self-start" href="/contact">Contact</a>
+            <AuthorizeView>
+                @* Signed-in admin: the nav points at the editors and hides the public marketing links. *@
+                <Authorized>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/admin/products">Products</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/admin/docs">Docs</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/admin/about">About</a>
+                    <form method="post" action="/Admin/Account/Logout">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn-primary mt-2 self-start">Sign out</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/products">Products</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/services">Services</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/pricing">Pricing</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/docs">Docs</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/about">About</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="https://app.promanageronline.com">Customer Portal</a>
+                    <a class="rounded px-2 py-2 hover:bg-slate-100" href="/Admin/Account/Login">Sign in</a>
+                    <a class="btn-primary mt-2 self-start" href="/contact">Contact</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
     </nav>
 </header>
