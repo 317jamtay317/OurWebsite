@@ -6,7 +6,7 @@ deployment and holds no Azure credentials. All runtime secrets live in **Azure K
 Container App reads them via a **managed identity**, so no secret ever passes through git or the
 command line.
 
-## What the deploy creates (resource group `rg-promanageronline-prod`)
+## What the deploy creates (resource group `ProjectManagement`)
 
 | Resource | Purpose |
 |---|---|
@@ -30,9 +30,9 @@ the managed identity access to the vault).
 ### 1. Resource group + Key Vault
 
 ```powershell
-az group create -n rg-promanageronline-prod -l eastus2
+az group create -n ProjectManagement -l eastus2
 
-az keyvault create -n kv-promanageronline -g rg-promanageronline-prod -l eastus2 `
+az keyvault create -n kv-promanageronline -g ProjectManagement -l eastus2 `
   --enable-rbac-authorization true
 ```
 
@@ -40,7 +40,7 @@ az keyvault create -n kv-promanageronline -g rg-promanageronline-prod -l eastus2
 
 ```powershell
 $me = az ad signed-in-user show --query id -o tsv
-$vaultId = az keyvault show -n kv-promanageronline -g rg-promanageronline-prod --query id -o tsv
+$vaultId = az keyvault show -n kv-promanageronline -g ProjectManagement --query id -o tsv
 az role assignment create --assignee $me --role "Key Vault Secrets Officer" --scope $vaultId
 ```
 
@@ -94,7 +94,7 @@ Useful switches:
 ```
 
 > Rotating a secret? Update it in Key Vault and restart the app to pick it up:
-> `az containerapp revision restart -g rg-promanageronline-prod -n promgr-web --revision <name>`
+> `az containerapp revision restart -g ProjectManagement -n promgr-web --revision <name>`
 > (or just redeploy).
 
 ---
@@ -107,9 +107,9 @@ Today the apex redirects to `app.promanageronline.com`. To point it at this mark
 1. **Remove the apex → app redirect** at your domain registrar/DNS.
 2. Get the values you'll need:
    ```powershell
-   az containerapp show -g rg-promanageronline-prod -n promgr-web `
+   az containerapp show -g ProjectManagement -n promgr-web `
      --query "{fqdn:properties.configuration.ingress.fqdn, verify:properties.customDomainVerificationId}" -o table
-   az containerapp env show -g rg-promanageronline-prod -n promgr-cae --query properties.staticIp -o tsv
+   az containerapp env show -g ProjectManagement -n promgr-cae --query properties.staticIp -o tsv
    ```
 3. Add DNS records at your registrar:
 
@@ -122,12 +122,12 @@ Today the apex redirects to `app.promanageronline.com`. To point it at this mark
 
 4. Bind the hostnames with a free managed certificate (run per hostname):
    ```powershell
-   az containerapp hostname add  -g rg-promanageronline-prod -n promgr-web --hostname www.promanageronline.com
-   az containerapp hostname bind -g rg-promanageronline-prod -n promgr-web `
+   az containerapp hostname add  -g ProjectManagement -n promgr-web --hostname www.promanageronline.com
+   az containerapp hostname bind -g ProjectManagement -n promgr-web `
      --hostname www.promanageronline.com --environment promgr-cae --validation-method CNAME
 
-   az containerapp hostname add  -g rg-promanageronline-prod -n promgr-web --hostname promanageronline.com
-   az containerapp hostname bind -g rg-promanageronline-prod -n promgr-web `
+   az containerapp hostname add  -g ProjectManagement -n promgr-web --hostname promanageronline.com
+   az containerapp hostname bind -g ProjectManagement -n promgr-web `
      --hostname promanageronline.com --environment promgr-cae --validation-method TXT
    ```
 

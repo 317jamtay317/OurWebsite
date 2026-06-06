@@ -16,7 +16,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$ResourceGroup = 'rg-promanageronline-prod',
+    [string]$ResourceGroup = 'ProjectManagement',
     [string]$Location      = 'eastus2',
     [string]$KeyVaultName  = 'kv-promanageronline',
     [string]$ImageRepo     = 'docker.io/jamtay317/promanageronline_website',
