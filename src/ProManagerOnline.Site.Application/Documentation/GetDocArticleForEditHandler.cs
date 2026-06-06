@@ -1,3 +1,4 @@
+using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Domain.Documentation;
 
 namespace ProManagerOnline.Site.Application.Documentation;
@@ -13,13 +14,13 @@ public sealed class GetDocArticleForEditHandler(IDocArticleRepository articles)
     /// <param name="id">The article's identifier.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The article's edit read model, or <see langword="null"/> when no article has that id.</returns>
-    public async Task<DocArticleEditDto?> Handle(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DocArticleEdit?> Handle(Guid id, CancellationToken cancellationToken = default)
     {
         var article = await articles.GetByIdAsync(new DocArticleId(id), cancellationToken);
 
         return article is null
             ? null
-            : new DocArticleEditDto(
+            : new DocArticleEdit(
                 article.Id.Value,
                 article.ProductId.Value,
                 article.Slug.Value,
@@ -27,6 +28,6 @@ public sealed class GetDocArticleForEditHandler(IDocArticleRepository articles)
                 article.Section,
                 article.Body,
                 article.Position,
-                article.Status);
+                article.Status == DocStatus.Published);
     }
 }

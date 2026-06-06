@@ -28,8 +28,8 @@ public class ListProductDocArticlesHandlerTests
 
         // Ordered by Section then Position; the other product's article is excluded.
         Assert.Equal(["Install", "Sign in", "Create a quote"], rows.Select(row => row.Title));
-        Assert.Equal(DocStatus.Draft, rows[0].Status);
-        Assert.Equal(DocStatus.Published, rows[1].Status);
+        Assert.False(rows[0].Published);
+        Assert.True(rows[1].Published);
         Assert.Equal("install", rows[0].Slug);
     }
 

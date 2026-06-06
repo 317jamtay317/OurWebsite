@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Web.Client;
-using ProManagerOnline.Site.Web.Client.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -10,6 +9,6 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 // products admin and the documentation admin resolve their gateway to the HTTP implementation here.
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped<IProductAdminApi, HttpClientProductAdminApi>();
-builder.Services.AddScoped<IDocsAdminApi, HttpDocsAdminApi>();
+builder.Services.AddScoped<IDocsAdminApi, HttpClientDocsAdminApi>();
 
 await builder.Build().RunAsync();

@@ -31,7 +31,7 @@ public class GetDocArticleForEditHandlerTests
         Assert.Equal("Basics", dto.Section);
         Assert.Equal("# Hi", dto.Body);
         Assert.Equal(2, dto.Position);
-        Assert.Equal(DocStatus.Published, dto.Status);
+        Assert.True(dto.Published);
     }
 
     [Fact]
