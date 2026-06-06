@@ -10,7 +10,3 @@
 .vscode/
 *.user
 **/.DS_Store
-
-# Old static-site assets (replaced by the .NET app).
-public/
-default.conf
