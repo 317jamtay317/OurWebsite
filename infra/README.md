@@ -1,109 +1,101 @@
 # Deploying ProManager Online to Azure
 
-The site runs on **Azure Container Apps** with an **Azure SQL** serverless database, deployed by the
-GitHub Actions workflow at [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) using
-the Bicep template at [`main.bicep`](main.bicep). Every push to `main` builds the image, pushes it to
-Docker Hub, and provisions/updates Azure.
+The site runs on **Azure Container Apps** against an **externally hosted SQL database**. You deploy it
+from your console with **`az`** + the [`deploy.ps1`](deploy.ps1) script — GitHub is not involved in
+deployment and holds no Azure credentials. All runtime secrets live in **Azure Key Vault**; the
+Container App reads them via a **managed identity**, so no secret ever passes through git or the
+command line.
 
-## What gets created (resource group `rg-promanageronline-prod`)
+## What the deploy creates (resource group `rg-promanageronline-prod`)
 
 | Resource | Purpose |
 |---|---|
 | Log Analytics workspace | Container logs |
 | Storage account + 2 file shares | Persists uploaded doc media and Data Protection keys across restarts |
 | Container Apps environment | Hosts the app; scales to zero when idle |
-| Azure SQL (serverless, auto-pause) | The database; the app migrates + seeds it on first boot |
+| User-assigned managed identity | Lets the app read its secrets from Key Vault |
 | Container App | The running site, pulling the private Docker Hub image |
 
-Estimated cost at low traffic: **~$15–30/month** (mostly SQL + storage; both the app and the database
-idle down to near-zero when unused).
+The **database and Key Vault are not created here** — you provide them (steps below). Estimated cost
+for what *is* created: **~$10–20/month** at low traffic (Container App + storage + logs). Key Vault is
+effectively free (no monthly fee; ~$0.03 per 10k secret reads).
 
 ---
 
-## One-time setup
+## One-time setup (`az` in the console)
 
-Do these once. The easiest place to run the `az` commands is **[Azure Cloud Shell](https://shell.azure.com)**
-in **Bash** mode (avoids Windows quoting issues).
+Sign in first: `az login`. The account needs **Owner** on the resource group (so the deploy can grant
+the managed identity access to the vault).
 
-### 1. Bootstrap GitHub → Azure auth (OIDC, no stored passwords)
+### 1. Resource group + Key Vault
 
-```bash
-# --- adjust these three ---
-GITHUB_ORG=317jamtay317
-GITHUB_REPO=website            # the repo name on GitHub
-APP_NAME=promanageronline-github-deploy
+```powershell
+az group create -n rg-promanageronline-prod -l eastus2
 
-RG=rg-promanageronline-prod
-LOCATION=eastus2
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-TENANT_ID=$(az account show --query tenantId -o tsv)
-
-# Resource group (the workflow also ensures this, but the role assignment below needs it first)
-az group create -n "$RG" -l "$LOCATION"
-
-# App registration + service principal
-APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
-az ad sp create --id "$APP_ID"
-
-# Federated credential: trust this repo's main branch (push deploys)
-az ad app federated-credential create --id "$APP_ID" --parameters "{
-  \"name\": \"github-main\",
-  \"issuer\": \"https://token.actions.githubusercontent.com\",
-  \"subject\": \"repo:${GITHUB_ORG}/${GITHUB_REPO}:ref:refs/heads/main\",
-  \"audiences\": [\"api://AzureADTokenExchange\"]
-}"
-
-# Let it manage only this resource group
-az role assignment create --assignee "$APP_ID" --role Contributor \
-  --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG}"
-
-# Values to copy into GitHub secrets:
-echo "AZURE_CLIENT_ID       = $APP_ID"
-echo "AZURE_TENANT_ID       = $TENANT_ID"
-echo "AZURE_SUBSCRIPTION_ID = $SUBSCRIPTION_ID"
+az keyvault create -n kv-promanageronline -g rg-promanageronline-prod -l eastus2 `
+  --enable-rbac-authorization true
 ```
 
-> Manual `workflow_dispatch` runs from a branch are also covered by the `main` credential. If you
-> ever deploy from a different branch, add another federated credential for it.
+### 2. Let yourself manage the vault's secrets
 
-### 2. Create a Docker Hub access token
-
-hub.docker.com → **Account Settings → Personal access tokens → Generate new token**, scope **Read & Write**.
-Make sure the repo `jamtay317/promanageronline_website` is **private**.
-
-### 3. Generate a SQL admin password
-
-Any strong password **without spaces** (the value is passed on the deploy command line). For example:
-
-```bash
-openssl rand -base64 24 | tr -d '/+=' | cut -c1-24
+```powershell
+$me = az ad signed-in-user show --query id -o tsv
+$vaultId = az keyvault show -n kv-promanageronline -g rg-promanageronline-prod --query id -o tsv
+az role assignment create --assignee $me --role "Key Vault Secrets Officer" --scope $vaultId
 ```
 
-### 4. Add GitHub repository secrets
+### 3. Add the secrets (values go straight into Azure — never into git or GitHub)
 
-Repo → **Settings → Secrets and variables → Actions → New repository secret**:
+```powershell
+az keyvault secret set --vault-name kv-promanageronline -n sql-connection-string  --value '<your SQL connection string>'
+az keyvault secret set --vault-name kv-promanageronline -n admin-email            --value 'admin@promanageronline.com'
+az keyvault secret set --vault-name kv-promanageronline -n admin-initial-password --value '<admin password>'
+az keyvault secret set --vault-name kv-promanageronline -n dockerhub-token        --value '<Docker Hub read token>'
 
-| Secret | Value | Required |
-|---|---|---|
-| `AZURE_CLIENT_ID` | from step 1 | ✅ |
-| `AZURE_TENANT_ID` | from step 1 | ✅ |
-| `AZURE_SUBSCRIPTION_ID` | from step 1 | ✅ |
-| `DOCKERHUB_USERNAME` | `jamtay317` | ✅ |
-| `DOCKERHUB_TOKEN` | from step 2 | ✅ |
-| `SQL_ADMIN_PASSWORD` | from step 3 | ✅ |
-| `ADMIN_EMAIL` | owner admin login email | ✅ |
-| `ADMIN_INITIAL_PASSWORD` | owner admin initial password (no spaces) | ✅ |
-| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` | contact-form email | optional |
-| `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY` | contact-form reCAPTCHA | optional |
+# Optional — only if you deploy with -EnableSmtp / -EnableRecaptcha:
+# az keyvault secret set --vault-name kv-promanageronline -n smtp-password    --value '<smtp password>'
+# az keyvault secret set --vault-name kv-promanageronline -n recaptcha-secret --value '<recaptcha secret>'
+```
 
-If the SMTP/reCAPTCHA secrets are left unset, the contact form falls back to logging enquiries (no
-email) and reCAPTCHA is disabled — fine to start, fill in later.
+The admin password must satisfy the policy: **≥8 chars with upper, lower, digit, and a symbol**.
 
-### 5. First deploy
+### 4. Let the Container App reach your database
 
-Push to `main`, or run the workflow manually (**Actions → Deploy to Azure → Run workflow**). The run
-prints the live URL (e.g. `https://promgr-web.<region>.azurecontainerapps.io`) in its summary. On the
-first boot the app applies migrations, seeds the catalogue, and creates the admin account.
+On the SQL server that hosts the database, enable **"Allow Azure services and resources to access this
+server"** (Azure portal → SQL server → Networking). Without this the app cannot connect.
+
+### 5. Make sure the Docker Hub repo is private
+
+`jamtay317/promanageronline_website` should be **private**; the `dockerhub-token` lets the Container
+App pull it.
+
+---
+
+## Deploy
+
+Sign in to both, then run the script from the repo root:
+
+```powershell
+az login
+docker login                       # Docker Hub, to push the image
+./infra/deploy.ps1
+```
+
+It builds the image, pushes it to Docker Hub, deploys the Bicep, and prints the live URL
+(e.g. `https://promgr-web.<region>.azurecontainerapps.io`). On first boot the app applies its EF
+migrations and seeds the catalogue + admin into your database.
+
+Useful switches:
+
+```powershell
+./infra/deploy.ps1 -Tag v1                       # explicit image tag (default: timestamp)
+./infra/deploy.ps1 -EnableSmtp -EnableRecaptcha  # turn on contact-form email + reCAPTCHA
+./infra/deploy.ps1 -SkipBuild                    # redeploy infra without rebuilding the image
+```
+
+> Rotating a secret? Update it in Key Vault and restart the app to pick it up:
+> `az containerapp revision restart -g rg-promanageronline-prod -n promgr-web --revision <name>`
+> (or just redeploy).
 
 ---
 
@@ -113,12 +105,11 @@ Today the apex redirects to `app.promanageronline.com`. To point it at this mark
 (leaving `app.promanageronline.com` — your product app — untouched):
 
 1. **Remove the apex → app redirect** at your domain registrar/DNS.
-2. Get the values you'll need from the deployment outputs:
-   ```bash
-   az containerapp show -g rg-promanageronline-prod -n promgr-web \
+2. Get the values you'll need:
+   ```powershell
+   az containerapp show -g rg-promanageronline-prod -n promgr-web `
      --query "{fqdn:properties.configuration.ingress.fqdn, verify:properties.customDomainVerificationId}" -o table
-   az containerapp env show -g rg-promanageronline-prod -n promgr-cae \
-     --query properties.staticIp -o tsv
+   az containerapp env show -g rg-promanageronline-prod -n promgr-cae --query properties.staticIp -o tsv
    ```
 3. Add DNS records at your registrar:
 
@@ -130,13 +121,13 @@ Today the apex redirects to `app.promanageronline.com`. To point it at this mark
    | `asuid` | TXT | the `customDomainVerificationId` |
 
 4. Bind the hostnames with a free managed certificate (run per hostname):
-   ```bash
+   ```powershell
    az containerapp hostname add  -g rg-promanageronline-prod -n promgr-web --hostname www.promanageronline.com
-   az containerapp hostname bind -g rg-promanageronline-prod -n promgr-web \
+   az containerapp hostname bind -g rg-promanageronline-prod -n promgr-web `
      --hostname www.promanageronline.com --environment promgr-cae --validation-method CNAME
 
    az containerapp hostname add  -g rg-promanageronline-prod -n promgr-web --hostname promanageronline.com
-   az containerapp hostname bind -g rg-promanageronline-prod -n promgr-web \
+   az containerapp hostname bind -g rg-promanageronline-prod -n promgr-web `
      --hostname promanageronline.com --environment promgr-cae --validation-method TXT
    ```
 
@@ -147,12 +138,10 @@ customers can reach your product app from here. (The **Sign in** link goes to th
 
 ## Tuning
 
-Override these by editing the `parameters:` in the workflow (or pass them to a manual `az deployment`):
+Pass these to `deploy.ps1` via `--parameters` overrides (or edit the defaults in `main.bicep`):
 
 - **`minReplicas`** (default `0`): scale-to-zero is cheapest but the first request after idle is slow
   (cold start). Set to `1` to keep one instance always warm.
-- **`sqlAutoPauseDelayMinutes`** (default `60`): the serverless DB pauses after this idle period;
-  the first query after a pause takes ~30–60s to resume. Set to `-1` to disable auto-pause.
 
 ## Local development is unaffected
 
@@ -161,6 +150,6 @@ This Azure path is entirely separate.
 
 ## Validating the template locally
 
-```bash
+```powershell
 az bicep build --file infra/main.bicep --stdout
 ```

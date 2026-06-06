@@ -1,15 +1,19 @@
 // ==========================================================================
 // ProManager Online — Azure infrastructure (resource-group scope).
 //
-// Provisions everything the site needs to run on Azure Container Apps:
+// Deploys the site to Azure Container Apps. All runtime secrets live in an existing Azure Key Vault
+// and are read by the app at runtime via a user-assigned managed identity — nothing sensitive is
+// passed into this template or stored outside Azure.
+//
+// Provisions:
 //   • Log Analytics workspace        (container logs)
 //   • Storage account + two file shares (uploaded doc media + Data Protection keys)
 //   • Container Apps environment     (+ the two file shares wired in as storage)
-//   • Azure SQL serverless database  (auto-pauses when idle)
+//   • User-assigned managed identity (+ Key Vault Secrets User on the vault)
 //   • The Container App itself        (pulls the image from Docker Hub)
 //
-// Secrets are passed in as secure parameters by the GitHub Actions workflow (sourced from GitHub
-// repository secrets) and stored as Container App secrets — none are committed to the repo.
+// The database is hosted externally; its connection string is a Key Vault secret.
+// Run via infra/deploy.ps1 (which builds + pushes the image, then deploys this).
 // ==========================================================================
 
 @description('Azure region for all resources.')
@@ -24,40 +28,31 @@ param namePrefix string = 'promgr'
 param containerImage string
 
 @description('Docker Hub username used to pull the private image.')
-param dockerHubUsername string
+param dockerHubUsername string = 'jamtay317'
 
-@description('Docker Hub access token (Read) used to pull the private image.')
-@secure()
-param dockerHubToken string
+@description('Name of the existing Key Vault (in this resource group) holding the app secrets.')
+param keyVaultName string
 
-@description('Azure SQL administrator login name.')
-param sqlAdminLogin string = 'pmoadmin'
+// Names of the secrets the app expects to find in the Key Vault.
+param sqlConnectionSecretName string = 'sql-connection-string'
+param adminEmailSecretName string = 'admin-email'
+param adminPasswordSecretName string = 'admin-initial-password'
+param dockerHubTokenSecretName string = 'dockerhub-token'
 
-@description('Azure SQL administrator password. Avoid spaces.')
-@secure()
-param sqlAdminPassword string
-
-@description('Owner admin email address, seeded on first boot.')
-param adminEmail string
-
-@description('Owner admin initial password, seeded on first boot. Avoid spaces.')
-@secure()
-param adminInitialPassword string
-
-@description('SMTP host for the contact form. Leave blank to use the logging email sender.')
+@description('Enable SMTP for the contact form. Requires the smtp-password secret in the vault.')
+param enableSmtp bool = false
 param smtpHost string = ''
 param smtpPort int = 587
 param smtpUseSsl bool = true
 param smtpUser string = ''
-@secure()
-param smtpPassword string = ''
 param smtpFromAddress string = ''
 param smtpFromName string = 'ProManager Online'
+param smtpPasswordSecretName string = 'smtp-password'
 
-@description('Google reCAPTCHA site key. Leave blank to disable reCAPTCHA on the contact form.')
+@description('Enable reCAPTCHA on the contact form. Requires the recaptcha-secret secret in the vault.')
+param enableRecaptcha bool = false
 param recaptchaSiteKey string = ''
-@secure()
-param recaptchaSecretKey string = ''
+param recaptchaSecretName string = 'recaptcha-secret'
 
 @description('Minimum container replicas. 0 = scale to zero (cheapest, but cold starts). 1 = always warm.')
 @minValue(0)
@@ -69,9 +64,6 @@ param minReplicas int = 0
 @maxValue(10)
 param maxReplicas int = 1
 
-@description('SQL serverless auto-pause delay in minutes. Set to -1 to disable auto-pause (no cold starts, higher cost).')
-param sqlAutoPauseDelayMinutes int = 60
-
 @description('Port the container listens on.')
 param containerPort int = 8080
 
@@ -80,26 +72,47 @@ var suffix = uniqueString(resourceGroup().id)
 var logAnalyticsName = '${namePrefix}-logs'
 var environmentName = '${namePrefix}-cae'
 var containerAppName = '${namePrefix}-web'
+var identityName = '${namePrefix}-id'
 var storageAccountName = toLower('st${namePrefix}${substring(suffix, 0, 8)}')
-var sqlServerName = toLower('${namePrefix}-sql-${suffix}')
-var databaseName = 'ProManagerOnlineSite'
 var mediaShareName = 'docs-media'
 var keysShareName = 'dataprotection'
 var mediaStorageName = 'media'
 var keysStorageName = 'keys'
 
-// The app reads its connection string from this Container App secret. Built from the SQL server FQDN
-// and the admin credentials; a generous timeout covers the serverless database resuming from pause.
-var connectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${databaseName};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=True;TrustServerCertificate=False;MultipleActiveResultSets=true;Connection Timeout=60;'
+// Built-in role: Key Vault Secrets User (read secret values).
+var keyVaultSecretsUserRoleId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 
-// ---- Container App secrets (optional ones are added only when supplied) ----
+// ---- Existing Key Vault (created out of band; holds the secrets) ----
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: keyVaultName
+}
+
+// ---- User-assigned managed identity the Container App uses to read the vault ----
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: identityName
+  location: location
+}
+
+resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, identity.id, keyVaultSecretsUserRoleId)
+  scope: keyVault
+  properties: {
+    roleDefinitionId: keyVaultSecretsUserRoleId
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// ---- Container App secrets (Key Vault references; optional ones added only when enabled) ----
 var baseSecrets = [
-  { name: 'dockerhub-token', value: dockerHubToken }
-  { name: 'connection-string', value: connectionString }
-  { name: 'admin-password', value: adminInitialPassword }
+  { name: 'connection-string', keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${sqlConnectionSecretName}', identity: identity.id }
+  { name: 'admin-email', keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${adminEmailSecretName}', identity: identity.id }
+  { name: 'admin-password', keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${adminPasswordSecretName}', identity: identity.id }
+  { name: 'dockerhub-token', keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${dockerHubTokenSecretName}', identity: identity.id }
 ]
-var smtpSecret = (empty(smtpHost) || empty(smtpPassword)) ? [] : [ { name: 'smtp-password', value: smtpPassword } ]
-var recaptchaSecret = (empty(recaptchaSiteKey) || empty(recaptchaSecretKey)) ? [] : [ { name: 'recaptcha-secret', value: recaptchaSecretKey } ]
+var smtpSecret = enableSmtp ? [ { name: 'smtp-password', keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${smtpPasswordSecretName}', identity: identity.id } ] : []
+var recaptchaSecret = enableRecaptcha ? [ { name: 'recaptcha-secret', keyVaultUrl: '${keyVault.properties.vaultUri}secrets/${recaptchaSecretName}', identity: identity.id } ] : []
 var secrets = concat(baseSecrets, smtpSecret, recaptchaSecret)
 
 // ---- Container environment variables (mirror appsettings.json section names) ----
@@ -107,22 +120,24 @@ var baseEnv = [
   { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
   { name: 'ASPNETCORE_HTTP_PORTS', value: string(containerPort) }
   { name: 'ConnectionStrings__SiteDatabase', secretRef: 'connection-string' }
-  { name: 'Admin__Email', value: adminEmail }
+  { name: 'Admin__Email', secretRef: 'admin-email' }
   { name: 'Admin__InitialPassword', secretRef: 'admin-password' }
   { name: 'DataProtection__KeyRingPath', value: '/keys' }
 ]
-var smtpEnv = empty(smtpHost) ? [] : [
+var smtpEnv = enableSmtp ? [
   { name: 'Smtp__Host', value: smtpHost }
   { name: 'Smtp__Port', value: string(smtpPort) }
   { name: 'Smtp__UseSsl', value: toLower(string(smtpUseSsl)) }
   { name: 'Smtp__User', value: smtpUser }
+  { name: 'Smtp__Password', secretRef: 'smtp-password' }
   { name: 'Smtp__FromAddress', value: smtpFromAddress }
   { name: 'Smtp__FromName', value: smtpFromName }
-]
-var smtpPwdEnv = (empty(smtpHost) || empty(smtpPassword)) ? [] : [ { name: 'Smtp__Password', secretRef: 'smtp-password' } ]
-var recaptchaEnv = empty(recaptchaSiteKey) ? [] : [ { name: 'Recaptcha__SiteKey', value: recaptchaSiteKey } ]
-var recaptchaSecretEnv = (empty(recaptchaSiteKey) || empty(recaptchaSecretKey)) ? [] : [ { name: 'Recaptcha__SecretKey', secretRef: 'recaptcha-secret' } ]
-var containerEnv = concat(baseEnv, smtpEnv, smtpPwdEnv, recaptchaEnv, recaptchaSecretEnv)
+] : []
+var recaptchaEnv = enableRecaptcha ? [
+  { name: 'Recaptcha__SiteKey', value: recaptchaSiteKey }
+  { name: 'Recaptcha__SecretKey', secretRef: 'recaptcha-secret' }
+] : []
+var containerEnv = concat(baseEnv, smtpEnv, recaptchaEnv)
 
 // ---- Log Analytics ----
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -207,50 +222,16 @@ resource keysEnvStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' 
   dependsOn: [ keysShare ]
 }
 
-// ---- Azure SQL (serverless, auto-pause) ----
-resource sqlServer 'Microsoft.Sql/servers@2023-08-01' = {
-  name: sqlServerName
-  location: location
-  properties: {
-    administratorLogin: sqlAdminLogin
-    administratorLoginPassword: sqlAdminPassword
-    minimalTlsVersion: '1.2'
-    publicNetworkAccess: 'Enabled'
-  }
-}
-
-resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01' = {
-  parent: sqlServer
-  name: databaseName
-  location: location
-  sku: {
-    name: 'GP_S_Gen5_1'
-    tier: 'GeneralPurpose'
-    family: 'Gen5'
-    capacity: 1
-  }
-  properties: {
-    autoPauseDelay: sqlAutoPauseDelayMinutes
-    minCapacity: json('0.5')
-    maxSizeBytes: 2147483648
-    zoneRedundant: false
-  }
-}
-
-// Lets the Container App (an Azure service with dynamic egress IPs) reach the SQL server.
-resource sqlFirewallAzure 'Microsoft.Sql/servers/firewallRules@2023-08-01' = {
-  parent: sqlServer
-  name: 'AllowAllAzureIps'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
 // ---- Container App ----
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${identity.id}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environment.id
     configuration: {
@@ -289,12 +270,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
     }
   }
-  dependsOn: [ mediaEnvStorage, keysEnvStorage, sqlFirewallAzure ]
+  // The managed identity must be able to read the vault before the app resolves its secret references.
+  dependsOn: [ keyVaultSecretsUser, mediaEnvStorage, keysEnvStorage ]
 }
 
-// ---- Outputs (used by the workflow and the DNS / custom-domain step) ----
+// ---- Outputs ----
 output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
 output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output environmentStaticIp string = environment.properties.staticIp
 output customDomainVerificationId string = containerApp.properties.customDomainVerificationId
-output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
+output managedIdentityPrincipalId string = identity.properties.principalId
