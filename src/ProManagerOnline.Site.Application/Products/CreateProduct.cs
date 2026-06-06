@@ -44,6 +44,7 @@ public sealed class CreateProductHandler(IProductRepository products)
         var product = Product.CreateDraft(slug, command.Name, command.Category, command.Summary);
         ApplyPricing(product, command);
         await products.AddAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
 
         return product.Id;
     }

@@ -22,6 +22,6 @@ public sealed class RemovePlanHandler(IProductRepository products)
     {
         var product = await products.GetRequiredAsync(new ProductId(command.ProductId), cancellationToken);
         product.RemovePlan(new PlanId(command.PlanId));
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }

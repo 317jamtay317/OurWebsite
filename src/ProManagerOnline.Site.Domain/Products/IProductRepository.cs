@@ -5,6 +5,11 @@ namespace ProManagerOnline.Site.Domain.Products;
 /// <summary>
 /// Persistence abstraction for the <see cref="Product"/> aggregate. Defined in the domain
 /// and implemented in the infrastructure layer; consumed by application use cases.
+/// <para>
+/// Follows a unit-of-work model: <see cref="AddAsync"/> and <see cref="RemoveAsync"/> stage
+/// changes, and mutations made to a product loaded by <see cref="GetByIdAsync"/> or
+/// <see cref="GetBySlugAsync"/> are committed together by <see cref="SaveChangesAsync"/>.
+/// </para>
 /// </summary>
 public interface IProductRepository
 {
@@ -37,18 +42,20 @@ public interface IProductRepository
     /// <returns>All products, in no particular order.</returns>
     Task<IReadOnlyList<Product>> ListAllAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Adds a new product to the store.</summary>
+    /// <summary>Stages a new product for insertion; commit it with <see cref="SaveChangesAsync"/>.</summary>
     /// <param name="product">The product to add.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task AddAsync(Product product, CancellationToken cancellationToken = default);
 
-    /// <summary>Persists changes made to an existing, tracked product.</summary>
-    /// <param name="product">The product whose changes to save.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task UpdateAsync(Product product, CancellationToken cancellationToken = default);
-
-    /// <summary>Removes a product from the store.</summary>
+    /// <summary>Stages a product for removal; commit it with <see cref="SaveChangesAsync"/>.</summary>
     /// <param name="product">The product to remove.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task RemoveAsync(Product product, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists every pending change — a newly added or removed product, or mutations made to a
+    /// product loaded by <see cref="GetByIdAsync"/> or <see cref="GetBySlugAsync"/> — to the store.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

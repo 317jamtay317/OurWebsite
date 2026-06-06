@@ -15,5 +15,6 @@ public sealed class DeleteProductHandler(IProductRepository products)
     {
         var product = await products.GetRequiredAsync(new ProductId(id), cancellationToken);
         await products.RemoveAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }

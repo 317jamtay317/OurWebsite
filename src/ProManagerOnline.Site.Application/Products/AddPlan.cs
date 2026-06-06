@@ -38,6 +38,6 @@ public sealed class AddPlanHandler(IProductRepository products)
             Money.Create(command.Amount, Currency.Usd),
             command.BillingPeriod,
             command.Features);
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }
