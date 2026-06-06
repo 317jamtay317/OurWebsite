@@ -20,7 +20,7 @@
 [CmdletBinding()]
 param(
     [string]$ResourceGroup = 'ProjectManagement',
-    [string]$AppName       = 'promanageronline-web',
+    [string]$AppName       = 'promanageronlinewebsite',
     [string]$DockerRepo    = 'jamtay317/promanageronline_website',
     [string]$Tag           = (Get-Date -Format 'yyyyMMddHHmmss'),
     [switch]$SkipBuild
@@ -39,7 +39,9 @@ if (-not $existing) {
 
 if (-not $SkipBuild) {
     Write-Host "Building $pushImage ..." -ForegroundColor Cyan
-    docker build -t $pushImage -t $latestImage (Join-Path $PSScriptRoot '..')
+    # --no-cache guarantees the current source is compiled in. A stale build-cache layer once shipped
+    # an image missing the startup migration/seed code, so always build clean here.
+    docker build --no-cache -t $pushImage -t $latestImage (Join-Path $PSScriptRoot '..')
     if ($LASTEXITCODE -ne 0) { throw 'docker build failed' }
 
     Write-Host "Pushing to Docker Hub ..." -ForegroundColor Cyan

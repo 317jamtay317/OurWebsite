@@ -40,16 +40,16 @@ docker login
 
 $repo = 'jamtay317/promanageronline_website'
 $tag  = 'v1'
-docker build -t "${repo}:$tag" -t "${repo}:latest" .
+docker build --no-cache -t "${repo}:$tag" -t "${repo}:latest" .   # --no-cache avoids stale layers
 docker push "${repo}:$tag"; docker push "${repo}:latest"
 
 $conn        = '<your SQL connection string>'
-$adminEmail  = 'admin@promanageronline.com'
+$adminEmail  = 'james@jaila-files.com'
 $adminPw     = '<admin password>'          # >=8 chars: upper, lower, digit, symbol
 $dockerToken = '<docker hub read token>'
 
 az containerapp create `
-  --name promanageronline-web `
+  --name promanageronlinewebsite `
   --resource-group ProjectManagement `
   --environment project-management-env-v2 `
   --image "registry.hub.docker.com/${repo}:$tag" `
@@ -67,7 +67,7 @@ az containerapp create `
 ```
 
 On first boot the app applies its EF migrations and seeds the catalogue + admin into your database.
-The create command prints the app's FQDN (also: `az containerapp show -n promanageronline-web -g ProjectManagement --query properties.configuration.ingress.fqdn -o tsv`).
+The create command prints the app's FQDN (also: `az containerapp show -n promanageronlinewebsite -g ProjectManagement --query properties.configuration.ingress.fqdn -o tsv`).
 
 ---
 
@@ -85,11 +85,11 @@ docker login
 
 ```powershell
 # change a secret value (e.g. rotate the connection string)
-az containerapp secret set -n promanageronline-web -g ProjectManagement --secrets "connectionstring=<new value>"
+az containerapp secret set -n promanageronlinewebsite -g ProjectManagement --secrets "connectionstring=<new value>"
 
 # turn on SMTP + reCAPTCHA: add the secrets, then reference them as env vars
-az containerapp secret set -n promanageronline-web -g ProjectManagement --secrets "smtppassword=<pw>" "recaptchasecret=<key>"
-az containerapp update -n promanageronline-web -g ProjectManagement --set-env-vars `
+az containerapp secret set -n promanageronlinewebsite -g ProjectManagement --secrets "smtppassword=<pw>" "recaptchasecret=<key>"
+az containerapp update -n promanageronlinewebsite -g ProjectManagement --set-env-vars `
   'Smtp__Host=<host>' 'Smtp__User=<user>' 'Smtp__FromAddress=<from>' 'Smtp__Password=secretref:smtppassword' `
   'Recaptcha__SiteKey=<site key>' 'Recaptcha__SecretKey=secretref:recaptchasecret'
 ```
@@ -118,17 +118,17 @@ To serve this marketing site at `www` + the apex while leaving the product app o
    | `asuid` | TXT | `<customDomainVerificationId>` |
 
    ```powershell
-   az containerapp show -n promanageronline-web -g ProjectManagement `
+   az containerapp show -n promanageronlinewebsite -g ProjectManagement `
      --query "{fqdn:properties.configuration.ingress.fqdn, verify:properties.customDomainVerificationId}" -o table
    ```
 3. Bind to this app with a free managed certificate (per hostname):
    ```powershell
-   az containerapp hostname add  -n promanageronline-web -g ProjectManagement --hostname www.promanageronline.com
-   az containerapp hostname bind -n promanageronline-web -g ProjectManagement `
+   az containerapp hostname add  -n promanageronlinewebsite -g ProjectManagement --hostname www.promanageronline.com
+   az containerapp hostname bind -n promanageronlinewebsite -g ProjectManagement `
      --hostname www.promanageronline.com --environment project-management-env-v2 --validation-method CNAME
 
-   az containerapp hostname add  -n promanageronline-web -g ProjectManagement --hostname promanageronline.com
-   az containerapp hostname bind -n promanageronline-web -g ProjectManagement `
+   az containerapp hostname add  -n promanageronlinewebsite -g ProjectManagement --hostname promanageronline.com
+   az containerapp hostname bind -n promanageronlinewebsite -g ProjectManagement `
      --hostname promanageronline.com --environment project-management-env-v2 --validation-method TXT
    ```
 
