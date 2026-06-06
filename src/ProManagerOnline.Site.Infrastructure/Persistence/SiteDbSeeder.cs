@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ProManagerOnline.Site.Domain.Content;
 using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
 using ProManagerOnline.Site.Domain.ValueObjects;
@@ -16,6 +17,8 @@ public static class SiteDbSeeder
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     public static async Task SeedAsync(SiteDbContext context, CancellationToken cancellationToken = default)
     {
+        await SeedAboutPageAsync(context, cancellationToken);
+
         if (await context.Products.AnyAsync(cancellationToken))
         {
             return;
@@ -49,6 +52,35 @@ public static class SiteDbSeeder
         context.Products.Add(workflows);
         context.Products.Add(airCompliance);
         context.DocArticles.AddRange(WorkflowsDocumentation(workflows.Id));
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedAboutPageAsync(SiteDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.AboutPages.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        context.AboutPages.Add(AboutPage.Create(
+            "About ProManager Online",
+            """
+            ProManager Online builds practical business software for small companies — from
+            subscription products like Workflows.AI to purpose-built compliance tools and custom
+            application development.
+
+            We're an independent software business focused on doing a few things well: shipping
+            software that's dependable, easy to live with, and genuinely useful day to day.
+
+            ## What we do
+
+            - **Subscription products** — ready-to-use apps you can sign up for and start using today.
+            - **Custom development** — tailored applications built around how your business actually works.
+            - **Ongoing support** — we stand behind what we ship.
+
+            Have a question or a project in mind? [Get in touch](/contact) — we'd love to hear from you.
+            """));
+
         await context.SaveChangesAsync(cancellationToken);
     }
 

@@ -487,3 +487,6 @@ $RECYCLE.BIN/
 
 # Node tooling for the Tailwind CLI and the React/Vite admin
 **/node_modules/
+
+# Local Docker Compose overrides (machine-specific, e.g. host port remaps)
+docker-compose.override.yml

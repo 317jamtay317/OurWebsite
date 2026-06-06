@@ -1,0 +1,49 @@
+@page "/about"
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Html
+@using ProManagerOnline.Site.Application.Content
+@using ProManagerOnline.Site.Web.Rendering
+@inject GetAboutPageHandler GetAboutPage
+@inject IMarkdownRenderer Markdown
+
+<PageTitle>@_title — ProManager Online</PageTitle>
+
+<section class="container-site py-16">
+    @if (_page is null)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">About</h1>
+        <p class="mt-4 max-w-2xl text-lg text-slate-600">
+            This page is coming soon. In the meantime, <a class="font-medium text-brand hover:underline" href="/contact">get in touch</a>
+            and we'll be glad to tell you more.
+        </p>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">@_page.Title</h1>
+        <div class="doc-content mt-6 max-w-3xl">@_bodyHtml</div>
+    }
+</section>
+
+@code {
+    private AboutPageDto? _page;
+    private MarkupString _bodyHtml;
+    private string _title = "About";
+
+    /// <summary>Loads the editable About-page content and renders its Markdown body to HTML.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _page = await GetAboutPage.Handle();
+        if (_page is not null)
+        {
+            _title = _page.Title;
+            _bodyHtml = ToMarkup(Markdown.Render(_page.Body));
+        }
+    }
+
+    private static MarkupString ToMarkup(IHtmlContent content)
+    {
+        using var writer = new StringWriter();
+        content.WriteTo(writer, HtmlEncoder.Default);
+        return new MarkupString(writer.ToString());
+    }
+}
