@@ -17,6 +17,6 @@ public sealed class PublishProductHandler(IProductRepository products)
     {
         var product = await products.GetRequiredAsync(new ProductId(id), cancellationToken);
         product.Publish();
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }

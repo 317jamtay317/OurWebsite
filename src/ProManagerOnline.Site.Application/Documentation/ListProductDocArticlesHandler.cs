@@ -1,3 +1,4 @@
+using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Domain.Documentation;
 using ProManagerOnline.Site.Domain.Products;
 
@@ -17,14 +18,15 @@ public sealed class ListProductDocArticlesHandler(IDocArticleRepository articles
     /// The product's articles as admin rows, ordered by section then position; empty when the
     /// product has no articles.
     /// </returns>
-    public async Task<IReadOnlyList<DocArticleAdminRowDto>> Handle(
+    public async Task<IReadOnlyList<DocArticleRow>> Handle(
         Guid productId, CancellationToken cancellationToken = default)
     {
         var all = await articles.ListByProductAsync(new ProductId(productId), cancellationToken);
 
         return all
-            .Select(article => new DocArticleAdminRowDto(
-                article.Id.Value, article.Slug.Value, article.Title, article.Section, article.Position, article.Status))
+            .Select(article => new DocArticleRow(
+                article.Id.Value, article.Slug.Value, article.Title, article.Section, article.Position,
+                article.Status == DocStatus.Published))
             .ToList();
     }
 }

@@ -7,13 +7,11 @@ using ProManagerOnline.Site.Contracts;
 using ProManagerOnline.Site.Infrastructure;
 using ProManagerOnline.Site.Infrastructure.Identity;
 using ProManagerOnline.Site.Infrastructure.Persistence;
-using ProManagerOnline.Site.Web.Admin;
 using ProManagerOnline.Site.Web.Api;
 using ProManagerOnline.Site.Web.Components;
 using ProManagerOnline.Site.Web.Components.Account;
 using ProManagerOnline.Site.Web.Media;
 using ProManagerOnline.Site.Web.Rendering;
-using ProManagerOnline.Site.Web.Client.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -151,7 +149,7 @@ app.MapRazorPages();
 
 // JSON APIs the WebAssembly admin clients call (each requires an authenticated admin internally).
 app.MapProductAdminApi();
-app.MapAdminDocsApi();
+app.MapDocsAdminApi();
 
 // Model Context Protocol endpoint (Streamable HTTP) for MCP clients.
 app.MapMcp("/mcp");

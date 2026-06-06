@@ -42,6 +42,6 @@ public sealed class SetProductPricingHandler(IProductRepository products)
                 break;
         }
 
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }

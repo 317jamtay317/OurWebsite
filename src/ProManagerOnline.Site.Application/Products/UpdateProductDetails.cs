@@ -37,6 +37,6 @@ public sealed class UpdateProductDetailsHandler(IProductRepository products)
         }
 
         product.UpdateDetails(command.Name, command.Category, command.Summary);
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }

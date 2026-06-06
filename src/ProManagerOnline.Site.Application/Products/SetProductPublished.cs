@@ -37,6 +37,6 @@ public sealed class SetProductPublishedHandler(IProductRepository products)
             product.Unpublish();
         }
 
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }

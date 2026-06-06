@@ -86,7 +86,7 @@ public class ProductAdminCommandsTests
     {
         var (repo, product) = await WithDraft();
         product.MakeFixedPrice(Usd(499m));
-        await repo.UpdateAsync(product);
+        await repo.SaveChangesAsync();
 
         await new SetProductPricingHandler(repo).Handle(
             new SetProductPricingCommand(product.Id.Value, PricingKind.Tiered, null), CancellationToken.None);
@@ -111,7 +111,7 @@ public class ProductAdminCommandsTests
     {
         var (repo, product) = await WithDraft();
         product.AddPlan("Team", "", Usd(79m), BillingPeriod.Monthly);
-        await repo.UpdateAsync(product);
+        await repo.SaveChangesAsync();
 
         await new PublishProductHandler(repo).Handle(product.Id.Value, CancellationToken.None);
         Assert.Equal(ProductStatus.Published, (await repo.GetByIdAsync(product.Id))!.Status);

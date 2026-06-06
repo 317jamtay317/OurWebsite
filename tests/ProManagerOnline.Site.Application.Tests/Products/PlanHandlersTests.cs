@@ -42,7 +42,7 @@ public class PlanHandlersTests
     {
         var (repo, product) = await WithDraft();
         var planId = product.AddPlan("Solo", "old", Usd(29m), BillingPeriod.Monthly, ["A"]);
-        await repo.UpdateAsync(product);
+        await repo.SaveChangesAsync();
 
         var command = new UpdatePlanCommand(
             product.Id.Value, planId.Value, "Solo Plus", "new", 39m, BillingPeriod.Annual, ["B", "C"]);
@@ -60,7 +60,7 @@ public class PlanHandlersTests
         var (repo, product) = await WithDraft();
         var solo = product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
         product.AddPlan("Team", "", Usd(79m), BillingPeriod.Monthly);
-        await repo.UpdateAsync(product);
+        await repo.SaveChangesAsync();
 
         await new RemovePlanHandler(repo).Handle(
             new RemovePlanCommand(product.Id.Value, solo.Value), CancellationToken.None);
@@ -74,7 +74,7 @@ public class PlanHandlersTests
     {
         var (repo, product) = await WithDraft();
         var solo = product.AddPlan("Solo", "", Usd(29m), BillingPeriod.Monthly);
-        await repo.UpdateAsync(product);
+        await repo.SaveChangesAsync();
 
         await new FeaturePlanHandler(repo).Handle(
             new FeaturePlanCommand(product.Id.Value, solo.Value), CancellationToken.None);

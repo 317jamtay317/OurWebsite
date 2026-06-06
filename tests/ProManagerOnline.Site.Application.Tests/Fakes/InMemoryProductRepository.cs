@@ -11,6 +11,9 @@ internal sealed class InMemoryProductRepository : IProductRepository
 {
     private readonly Dictionary<ProductId, Product> _products = [];
 
+    /// <summary>The number of times <see cref="SaveChangesAsync"/> has been called, for assertions.</summary>
+    public int SaveChangesCount { get; private set; }
+
     public Task<Product?> GetByIdAsync(ProductId id, CancellationToken cancellationToken = default)
         => Task.FromResult(_products.GetValueOrDefault(id));
 
@@ -34,15 +37,15 @@ internal sealed class InMemoryProductRepository : IProductRepository
         return Task.CompletedTask;
     }
 
-    public Task UpdateAsync(Product product, CancellationToken cancellationToken = default)
-    {
-        _products[product.Id] = product;
-        return Task.CompletedTask;
-    }
-
     public Task RemoveAsync(Product product, CancellationToken cancellationToken = default)
     {
         _products.Remove(product.Id);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        SaveChangesCount++;
         return Task.CompletedTask;
     }
 }

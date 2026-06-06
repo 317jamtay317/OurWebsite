@@ -40,20 +40,20 @@ public sealed class ProductRepository(SiteDbContext context) : IProductRepositor
         => await context.Products.ToListAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task AddAsync(Product product, CancellationToken cancellationToken = default)
+    public Task AddAsync(Product product, CancellationToken cancellationToken = default)
     {
         context.Products.Add(product);
-        await context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task UpdateAsync(Product product, CancellationToken cancellationToken = default)
-        => await context.SaveChangesAsync(cancellationToken);
-
-    /// <inheritdoc />
-    public async Task RemoveAsync(Product product, CancellationToken cancellationToken = default)
+    public Task RemoveAsync(Product product, CancellationToken cancellationToken = default)
     {
         context.Products.Remove(product);
-        await context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+        => context.SaveChangesAsync(cancellationToken);
 }

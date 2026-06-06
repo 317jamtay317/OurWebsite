@@ -15,6 +15,6 @@ public sealed class UnpublishProductHandler(IProductRepository products)
     {
         var product = await products.GetRequiredAsync(new ProductId(id), cancellationToken);
         product.Unpublish();
-        await products.UpdateAsync(product, cancellationToken);
+        await products.SaveChangesAsync(cancellationToken);
     }
 }
